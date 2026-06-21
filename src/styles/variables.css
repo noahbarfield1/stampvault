@@ -1,0 +1,162 @@
+/* ============================================
+   StampVault Design System — CSS Custom Properties
+   Bloomberg Terminal meets Luxury Auction House
+   ============================================ */
+
+:root {
+  /* ── Color Palette ── */
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #0f0f19;
+  --color-bg-tertiary: #141420;
+  --color-bg-elevated: #1a1a2e;
+  --color-bg-hover: #1f1f35;
+
+  /* Glassmorphism surfaces */
+  --color-glass: rgba(15, 15, 25, 0.8);
+  --color-glass-hover: rgba(25, 25, 40, 0.85);
+  --color-glass-active: rgba(35, 35, 55, 0.9);
+  --color-glass-border: rgba(212, 165, 116, 0.12);
+  --color-glass-border-hover: rgba(212, 165, 116, 0.25);
+  --color-glass-border-active: rgba(212, 165, 116, 0.4);
+
+  /* Gold/Amber Accent */
+  --color-accent-gold: #d4a574;
+  --color-accent-gold-light: #e8c49a;
+  --color-accent-gold-dark: #a67c50;
+  --color-accent-amber: #f5c842;
+  --color-accent-gradient: linear-gradient(135deg, #d4a574 0%, #f5c842 100%);
+  --color-accent-gradient-hover: linear-gradient(135deg, #e8c49a 0%, #f7d566 100%);
+  --color-accent-glow: rgba(212, 165, 116, 0.3);
+  --color-accent-glow-strong: rgba(212, 165, 116, 0.5);
+
+  /* Semantic Colors */
+  --color-positive: #10b981;
+  --color-positive-bg: rgba(16, 185, 129, 0.1);
+  --color-positive-border: rgba(16, 185, 129, 0.3);
+  --color-negative: #f43f5e;
+  --color-negative-bg: rgba(244, 63, 94, 0.1);
+  --color-negative-border: rgba(244, 63, 94, 0.3);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+  --color-info: #3b82f6;
+  --color-info-bg: rgba(59, 130, 246, 0.1);
+  --color-info-border: rgba(59, 130, 246, 0.3);
+
+  /* Text Colors */
+  --color-text-primary: #e8e4dd;
+  --color-text-secondary: #8a8578;
+  --color-text-tertiary: #5c574e;
+  --color-text-accent: #d4a574;
+  --color-text-inverse: #0a0a0f;
+
+  /* Chart Colors */
+  --chart-gold: #d4a574;
+  --chart-amber: #f5c842;
+  --chart-emerald: #10b981;
+  --chart-blue: #3b82f6;
+  --chart-purple: #8b5cf6;
+  --chart-rose: #f43f5e;
+  --chart-cyan: #06b6d4;
+  --chart-orange: #f97316;
+
+  /* ── Typography ── */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Playfair Display', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --text-xs: 0.6875rem;     /* 11px */
+  --text-sm: 0.8125rem;     /* 13px */
+  --text-base: 0.9375rem;   /* 15px */
+  --text-lg: 1.125rem;      /* 18px */
+  --text-xl: 1.3125rem;     /* 21px */
+  --text-2xl: 1.625rem;     /* 26px */
+  --text-3xl: 2rem;          /* 32px */
+  --text-4xl: 2.5rem;        /* 40px */
+  --text-5xl: 3.25rem;       /* 52px */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Spacing ── */
+  --space-0: 0;
+  --space-1: 0.25rem;    /* 4px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+  --space-20: 5rem;      /* 80px */
+  --space-24: 6rem;      /* 96px */
+
+  /* ── Border Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 9999px;
+  --radius-circle: 50%;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(212, 165, 116, 0.15);
+  --shadow-glow-strong: 0 0 40px rgba(212, 165, 116, 0.25);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+
+  /* ── Glassmorphism ── */
+  --glass-blur: blur(16px);
+  --glass-blur-heavy: blur(24px);
+  --glass-blur-light: blur(8px);
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-Indices ── */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sidebar: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-chat-panel: 600;
+  --z-toast: 700;
+  --z-tooltip: 800;
+  --z-mobile-nav: 900;
+
+  /* ── Layout ── */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
+  --mobile-nav-height: 68px;
+  --chat-panel-width: 420px;
+  --max-content-width: 1440px;
+
+  /* ── Breakpoints (for reference in JS) ── */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
