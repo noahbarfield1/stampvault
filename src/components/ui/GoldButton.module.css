@@ -1,0 +1,166 @@
+/* ============================================
+   GoldButton — Primary Action Button
+   ============================================ */
+
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background var(--transition-base),
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    color var(--transition-base),
+    opacity var(--transition-base);
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 2px;
+}
+
+/* ── Size Variants ── */
+
+.sizeSm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.sizeMd {
+  height: 40px;
+  padding: 0 var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.sizeLg {
+  height: 48px;
+  padding: 0 var(--space-8);
+  font-size: var(--text-base);
+}
+
+/* ── Primary Variant ── */
+
+.primary {
+  background: var(--color-accent-gradient);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-accent-gradient-hover);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+.primary:active:not(:disabled) {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Secondary Variant ── */
+
+.secondary {
+  background: transparent;
+  color: var(--color-accent-gold);
+  border-color: var(--color-accent-gold-dark);
+}
+
+.secondary:hover:not(:disabled) {
+  background: rgba(212, 165, 116, 0.08);
+  border-color: var(--color-accent-gold);
+  box-shadow: var(--shadow-glow);
+}
+
+.secondary:active:not(:disabled) {
+  background: rgba(212, 165, 116, 0.14);
+}
+
+/* ── Ghost Variant ── */
+
+.ghost {
+  background: transparent;
+  color: var(--color-accent-gold);
+  border-color: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  background: rgba(212, 165, 116, 0.06);
+  color: var(--color-accent-gold-light);
+}
+
+.ghost:active:not(:disabled) {
+  background: rgba(212, 165, 116, 0.12);
+}
+
+/* ── Full Width ── */
+
+.fullWidth {
+  width: 100%;
+}
+
+/* ── Disabled ── */
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Loading State ── */
+
+.loading {
+  pointer-events: none;
+}
+
+.loadingContent {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinnerIcon {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-radius: var(--radius-circle);
+  animation: spin 0.65s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Icon ── */
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 1em;
+  height: 1em;
+}

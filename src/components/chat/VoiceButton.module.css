@@ -1,0 +1,203 @@
+/* ─── VoiceButton ─────────────────────────────────────────────────────── */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  color: var(--color-accent-gold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.button:hover {
+  border-color: var(--color-glass-border-hover);
+  background: var(--color-glass-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Sizes ────────────────────────────────────────────────────────────── */
+
+.sm {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+}
+
+.md {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+}
+
+.lg {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-xl);
+}
+
+.sm .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.md .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.lg .icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── Icon ─────────────────────────────────────────────────────────────── */
+
+.icon {
+  display: block;
+  position: relative;
+  z-index: 2;
+  transition: color var(--transition-fast);
+}
+
+/* ── Listening State ──────────────────────────────────────────────────── */
+
+.listening {
+  border-color: var(--color-negative-border);
+  background: var(--color-negative-bg);
+  color: var(--color-negative);
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.25);
+}
+
+.listening:hover {
+  border-color: var(--color-negative);
+  background: rgba(244, 63, 94, 0.15);
+}
+
+/* ── Pulse Ring ───────────────────────────────────────────────────────── */
+
+.pulseRing {
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid var(--color-negative);
+  animation: pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* ── Waveform Bars ────────────────────────────────────────────────────── */
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.waveBar {
+  width: 2px;
+  background: var(--color-negative);
+  border-radius: 1px;
+  animation: wave 0.8s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+.waveBar:nth-child(1) { height: 4px; animation-delay: 0s; }
+.waveBar:nth-child(2) { height: 7px; animation-delay: 0.1s; }
+.waveBar:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+.waveBar:nth-child(4) { height: 7px; animation-delay: 0.3s; }
+.waveBar:nth-child(5) { height: 4px; animation-delay: 0.4s; }
+
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+/* ── Processing State ─────────────────────────────────────────────────── */
+
+.processing {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+  pointer-events: none;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinnerRing {
+  width: 70%;
+  height: 70%;
+  border: 2px solid transparent;
+  border-top-color: var(--color-accent-gold);
+  border-radius: var(--radius-circle);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Tooltip ──────────────────────────────────────────────────────────── */
+
+.tooltipWrapper {
+  position: relative;
+}
+
+.tooltipText {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-glass-border);
+}
+
+.tooltipWrapper:hover .tooltipText {
+  opacity: 1;
+}

@@ -1,0 +1,120 @@
+.mobileNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--mobile-nav-height);
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border-top: 1px solid var(--color-glass-border);
+  z-index: var(--z-mobile-nav);
+  display: none;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--space-2);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 1023px) {
+  .mobileNav {
+    display: flex;
+  }
+}
+
+/* ── Tab Item ── */
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+  color: var(--color-text-tertiary);
+  transition: color var(--transition-fast);
+  position: relative;
+  min-width: 48px;
+}
+
+.tab:hover {
+  color: var(--color-text-secondary);
+}
+
+.tabActive {
+  color: var(--color-accent-gold);
+}
+
+.tabIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.tabIconSvg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.5;
+}
+
+.tabLabel {
+  font-size: 0.625rem;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* Active dot indicator */
+.tabDot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-circle);
+  background: var(--color-accent-gold);
+}
+
+/* ── Upload Button (special centered tab) ── */
+.uploadTab {
+  position: relative;
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-circle);
+  background: var(--color-accent-gradient);
+  box-shadow: var(--shadow-glow-strong);
+  color: var(--color-bg-primary);
+  border: 2px solid rgba(212, 165, 116, 0.4);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: -16px;
+}
+
+.uploadButton:hover {
+  background: var(--color-accent-gradient-hover);
+  box-shadow: var(--shadow-glow-strong), 0 4px 16px rgba(212, 165, 116, 0.3);
+  transform: scale(1.05);
+}
+
+.uploadButton:active {
+  transform: scale(0.97);
+}
+
+.uploadButtonIcon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
+.uploadTabActive .uploadButton {
+  box-shadow: var(--shadow-glow-strong), 0 0 24px rgba(212, 165, 116, 0.4);
+}

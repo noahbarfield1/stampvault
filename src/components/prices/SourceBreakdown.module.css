@@ -1,0 +1,151 @@
+/* ─── SourceBreakdown ─────────────────────────────────────────────────── */
+
+.container {
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-lg);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-5);
+}
+
+/* ── Chart ─────────────────────────────────────────────────────────────── */
+
+.chartWrapper {
+  width: 100%;
+  height: 260px;
+  margin-bottom: var(--space-5);
+}
+
+/* ── Legend ────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.legendItem:hover {
+  background: var(--color-glass-hover);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-circle);
+  flex-shrink: 0;
+}
+
+.legendInfo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.legendName {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legendMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.legendCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.legendDeviation {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.deviationPositive {
+  composes: legendDeviation;
+  color: var(--color-positive);
+  background: var(--color-positive-bg);
+}
+
+.deviationNegative {
+  composes: legendDeviation;
+  color: var(--color-negative);
+  background: var(--color-negative-bg);
+}
+
+.deviationNeutral {
+  composes: legendDeviation;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+
+/* ── Tooltip ──────────────────────────────────────────────────────────── */
+
+.tooltip {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-glass-border-hover);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-lg);
+}
+
+.tooltipName {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+  margin-bottom: var(--space-1);
+}
+
+.tooltipCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .container {
+    padding: var(--space-4);
+  }
+
+  .chartWrapper {
+    height: 200px;
+  }
+}

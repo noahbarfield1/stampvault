@@ -1,0 +1,191 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: var(--sidebar-width);
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--color-glass-border);
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebarCollapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* ── Logo Area ── */
+.logoArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border-bottom: 1px solid var(--color-glass-border);
+  min-height: var(--header-height);
+  overflow: hidden;
+}
+
+.logoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-gradient);
+  box-shadow: var(--shadow-glow);
+}
+
+.logoIconSvg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-bg-primary);
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  background: var(--color-accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* ── Navigation ── */
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-3);
+  gap: var(--space-1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.navItem:hover {
+  color: var(--color-text-primary);
+  background: var(--color-glass-hover);
+  border-color: var(--color-glass-border);
+}
+
+.navItemActive {
+  color: var(--color-accent-gold);
+  background: var(--color-glass-active);
+  border-color: var(--color-glass-border-active);
+}
+
+.navItemActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--color-accent-gradient);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+}
+
+.navIconSvg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.5;
+}
+
+.navLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Collapse Toggle ── */
+.collapseArea {
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-glass-border);
+}
+
+.collapseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.collapseButton:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-glass-hover);
+  border-color: var(--color-glass-border);
+}
+
+.collapseIconSvg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.5;
+  transition: transform var(--transition-base);
+}
+
+.collapseIconRotated {
+  transform: rotate(180deg);
+}
+
+/* ── Collapsed State Overrides ── */
+.sidebarCollapsed .logoArea {
+  justify-content: center;
+  padding: var(--space-6) var(--space-3);
+}
+
+.sidebarCollapsed .navItem {
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.sidebarCollapsed .navItemActive::before {
+  height: 40%;
+}
+
+/* ── Responsive: Hide on mobile ── */
+@media (max-width: 1023px) {
+  .sidebar {
+    display: none;
+  }
+}

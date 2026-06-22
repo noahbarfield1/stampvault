@@ -99,6 +99,7 @@ export interface StampIdentification {
   series: string | null;
   confidence: number;
   status: IdentificationStatus;
+  referenceImageUrl?: string | null;
 }
 
 /* ─── Stamp (primary domain entity) ──────────────────────────────────── */
@@ -127,6 +128,19 @@ export interface Stamp {
   /* timestamps */
   createdAt: ISODateString;
   updatedAt: ISODateString;
+}
+
+/* ─── Detected Stamp (segmentation result) ───────────────────────────── */
+
+export interface DetectedStamp {
+  boundingBox: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  };
+  description: string;
+  confidence: number;
 }
 
 /* ─── Upload Batch ───────────────────────────────────────────────────── */

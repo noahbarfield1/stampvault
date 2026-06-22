@@ -1,0 +1,103 @@
+/* ============================================
+   ProgressBar — Animated Fill Bar
+   ============================================ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.percent {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: rgba(138, 133, 120, 0.1);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+/* ── Gold Variant ── */
+
+.fillGold {
+  background: var(--color-accent-gradient);
+  box-shadow: 0 0 10px rgba(212, 165, 116, 0.3);
+}
+
+/* ── Emerald Variant ── */
+
+.fillEmerald {
+  background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* Leading edge glow */
+.fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 14px;
+  height: calc(100% + 4px);
+  border-radius: var(--radius-pill);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.fillGold::after {
+  background: radial-gradient(
+    circle at center,
+    rgba(245, 200, 66, 0.8) 0%,
+    transparent 70%
+  );
+}
+
+.fillEmerald::after {
+  background: radial-gradient(
+    circle at center,
+    rgba(16, 185, 129, 0.8) 0%,
+    transparent 70%
+  );
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

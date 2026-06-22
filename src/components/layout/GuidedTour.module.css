@@ -1,0 +1,181 @@
+.tourOverlay {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 9999;
+  max-width: 360px;
+  width: calc(100vw - var(--space-10));
+}
+
+.tourCard {
+  background: var(--color-glass-active);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid #d4a574;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 8px 32px rgba(212, 165, 116, 0.15),
+              inset 0 0 12px rgba(212, 165, 116, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: pulseGoldBorder 4s infinite alternate;
+}
+
+@keyframes pulseGoldBorder {
+  0% {
+    border-color: rgba(212, 165, 116, 0.6);
+    box-shadow: 0 8px 24px rgba(212, 165, 116, 0.1),
+                inset 0 0 8px rgba(212, 165, 116, 0.02);
+  }
+  100% {
+    border-color: rgba(245, 200, 66, 0.95);
+    box-shadow: 0 12px 36px rgba(212, 165, 116, 0.22),
+                inset 0 0 16px rgba(212, 165, 116, 0.08);
+  }
+}
+
+.progressRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  color: var(--color-text-accent);
+  background: rgba(212, 165, 116, 0.12);
+  border: 1px solid rgba(212, 165, 116, 0.2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.stepCounter {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.stepDescription {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-glass-border);
+}
+
+.skipBtn {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color var(--transition-fast);
+}
+
+.skipBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.navButtons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.prevBtn,
+.nextBtn {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.prevBtn {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-glass-border);
+}
+
+.prevBtn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-glass-border-hover);
+}
+
+.nextBtn {
+  color: #0a0a0f;
+  background: var(--color-accent-gradient);
+  border: none;
+  box-shadow: 0 2px 8px rgba(212, 165, 116, 0.2);
+}
+
+.nextBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.4);
+}
+
+.footer {
+  padding-top: var(--space-1);
+  display: flex;
+  align-items: center;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  width: 100%;
+}
+
+.checkboxInput {
+  accent-color: #d4a574;
+  cursor: pointer;
+}
+
+.checkboxText {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .tourOverlay {
+    bottom: var(--space-20); /* Leave room for bottom mobile navigation */
+    right: var(--space-3);
+    left: var(--space-3);
+    width: auto;
+    max-width: none;
+  }
+}

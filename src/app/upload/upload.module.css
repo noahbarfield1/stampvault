@@ -1,0 +1,188 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  width: 100%;
+}
+
+/* ── Page title ────────────────────────────────────────────────────── */
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-6);
+  text-align: center;
+}
+
+/* ── Step Indicator ────────────────────────────────────────────────── */
+
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: var(--space-8);
+  padding: 0 var(--space-4);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 1;
+}
+
+.stepCircle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-circle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  transition: all var(--transition-base);
+  border: 2px solid;
+}
+
+.stepCirclePending {
+  composes: stepCircle;
+  background: transparent;
+  border-color: var(--color-glass-border);
+  color: var(--color-text-tertiary);
+}
+
+.stepCircleActive {
+  composes: stepCircle;
+  background: var(--color-accent-gradient);
+  border-color: var(--color-accent-gold);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-glow-strong);
+}
+
+.stepCircleCompleted {
+  composes: stepCircle;
+  background: var(--color-positive);
+  border-color: var(--color-positive);
+  color: white;
+}
+
+.stepLabel {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.stepLabelPending {
+  composes: stepLabel;
+  color: var(--color-text-tertiary);
+}
+
+.stepLabelActive {
+  composes: stepLabel;
+  color: var(--color-text-accent);
+}
+
+.stepLabelCompleted {
+  composes: stepLabel;
+  color: var(--color-positive);
+}
+
+/* ── Connector lines ───────────────────────────────────────────────── */
+
+.connector {
+  flex: 1;
+  height: 2px;
+  min-width: 40px;
+  max-width: 100px;
+  margin: 0 var(--space-1);
+  margin-bottom: 24px; /* align with circles */
+}
+
+.connectorPending {
+  composes: connector;
+  background: var(--color-glass-border);
+}
+
+.connectorCompleted {
+  composes: connector;
+  background: var(--color-positive);
+}
+
+/* ── Step content ──────────────────────────────────────────────────── */
+
+.content {
+  position: relative;
+  min-height: 300px;
+}
+
+.stepContent {
+  width: 100%;
+}
+
+/* ── Navigation ────────────────────────────────────────────────────── */
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-glass-border);
+}
+
+.navBackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navBackBtn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-glass-border-hover);
+}
+
+.navBackBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .title {
+    font-size: var(--text-2xl);
+  }
+
+  .steps {
+    padding: 0;
+  }
+
+  .stepLabel {
+    display: none;
+  }
+
+  .connector {
+    min-width: 20px;
+    margin-bottom: 0;
+  }
+}

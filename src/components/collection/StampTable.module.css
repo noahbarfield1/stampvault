@@ -1,0 +1,192 @@
+.wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur);
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+
+.thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.thead th {
+  padding: var(--space-3) var(--space-3);
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-glass-border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sortable {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.sortable:hover {
+  color: var(--color-text-accent);
+}
+
+.sortIcon {
+  display: inline-block;
+  margin-left: var(--space-1);
+  font-size: 0.625rem;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.sortActive {
+  color: var(--color-text-accent);
+}
+
+.sortActive .sortIcon {
+  opacity: 1;
+  color: var(--color-accent-gold);
+}
+
+/* ── Body ──────────────────────────────────────────────────────────── */
+
+.tbody tr {
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.tbody tr:hover {
+  background: var(--color-glass-hover);
+}
+
+.tbody td {
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid rgba(212, 165, 116, 0.06);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+/* ── Checkbox ──────────────────────────────────────────────────────── */
+
+.checkboxCell {
+  width: 40px;
+  text-align: center;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent-gold);
+  cursor: pointer;
+}
+
+/* ── Thumbnail ─────────────────────────────────────────────────────── */
+
+.thumbnailCell {
+  width: 56px;
+}
+
+.thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-glass-border);
+}
+
+.thumbnailPlaceholder {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-base);
+  border: 1px solid var(--color-glass-border);
+}
+
+/* ── Condition badge ───────────────────────────────────────────────── */
+
+.conditionBadge {
+  display: inline-flex;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.625rem;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  background: rgba(212, 165, 116, 0.12);
+  color: var(--color-accent-gold-light);
+}
+
+/* ── Value ──────────────────────────────────────────────────────────── */
+
+.valueCell {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  color: var(--color-positive);
+}
+
+/* ── Tags ───────────────────────────────────────────────────────────── */
+
+.tags {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-flex;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.5625rem;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* ── Grade ──────────────────────────────────────────────────────────── */
+
+.grade {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* ── Country ───────────────────────────────────────────────────────── */
+
+.countryCell {
+  white-space: nowrap;
+}
+
+.scottCell {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .wrapper {
+    margin: 0 calc(var(--space-3) * -1);
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}

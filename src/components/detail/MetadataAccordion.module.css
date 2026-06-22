@@ -1,0 +1,153 @@
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Section ───────────────────────────────────────────────────────── */
+
+.section {
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-glass);
+  backdrop-filter: var(--glass-blur-light);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.sectionHeader:hover {
+  background: var(--color-glass-hover);
+}
+
+.sectionTitle {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sectionIcon {
+  font-size: var(--text-base);
+}
+
+.chevron {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  transition: transform var(--transition-base);
+}
+
+.chevronOpen {
+  composes: chevron;
+  transform: rotate(180deg);
+}
+
+/* ── Content ───────────────────────────────────────────────────────── */
+
+.sectionContent {
+  padding: 0 var(--space-4) var(--space-4);
+  overflow: hidden;
+}
+
+/* ── Field rows ────────────────────────────────────────────────────── */
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.06);
+  gap: var(--space-3);
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.fieldLabel {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.fieldValueWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.fieldValue {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-align: right;
+  word-break: break-word;
+}
+
+.fieldEdit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 0.625rem;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.field:hover .fieldEdit {
+  opacity: 1;
+}
+
+.fieldEdit:hover {
+  color: var(--color-text-accent);
+  background: rgba(212, 165, 116, 0.1);
+}
+
+/* ── Inline edit input ─────────────────────────────────────────────── */
+
+.fieldInput {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent-gold);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  outline: none;
+  text-align: right;
+  max-width: 200px;
+  width: 100%;
+  box-shadow: var(--shadow-glow);
+}

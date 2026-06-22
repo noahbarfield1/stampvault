@@ -19,6 +19,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   context: ChatContext | null;
+  imageUrl?: string;
 }
 
 export type VoiceSessionStatus =
@@ -30,9 +31,29 @@ export type VoiceSessionStatus =
   | 'error';
 
 export interface VoiceSession {
-  isActive: boolean;
-  status: VoiceSessionStatus;
+  isActive?: boolean;
+  isListening?: boolean;
+  isProcessing?: boolean;
+  isSpeaking?: boolean;
+  status?: VoiceSessionStatus;
   transcript: string;
-  error: string | null;
-  duration: number; // seconds
+  error?: string | null;
+  duration?: number; // seconds
 }
+
+/* ─── Citation ───────────────────────────────────────────────────────── */
+
+export interface Citation {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+/* ─── Voice Command (parsed voice input) ─────────────────────────────── */
+
+export type VoiceCommand =
+  | { type: 'navigate'; destination: string }
+  | { type: 'search'; query: string }
+  | { type: 'action'; action: string; params: Record<string, string> }
+  | { type: 'query'; question: string };
+
