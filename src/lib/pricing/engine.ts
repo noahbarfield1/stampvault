@@ -123,7 +123,7 @@ function computeSourceStats(sources: PriceSource[]): SourceStats | null {
 
   const prices = sources
     .map((s) => s.price)
-    .filter((p) => !isNaN(p) && p > 0);
+    .filter((p) => !isNaN(p) && Number.isFinite(p) && p > 0);
 
   if (prices.length === 0) return null;
 
@@ -334,7 +334,7 @@ export async function fetchAllPrices(stamp: Stamp): Promise<PriceData> {
   // Compute price range from all sources (with outlier removal)
   const allPrices = allSources
     .map((s) => s.price)
-    .filter((p) => !isNaN(p) && p > 0);
+    .filter((p) => !isNaN(p) && Number.isFinite(p) && p > 0);
   const filteredPrices =
     allPrices.length > 0 ? removeOutliers(allPrices) : [];
 
@@ -469,7 +469,7 @@ export async function getQuickEstimate(
 
   const allPrices = [...hipstampSources, ...ebaySources]
     .map((s) => s.price)
-    .filter((p) => !isNaN(p) && p > 0);
+    .filter((p) => !isNaN(p) && Number.isFinite(p) && p > 0);
 
   if (allPrices.length === 0) return null;
 
