@@ -8,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
-import { GoogleAuth } from 'google-auth-library';
 import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 
 export const maxDuration = 60;
@@ -91,24 +90,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const projectId = process.env.VERTEX_AI_PROJECT_ID;
-    const location = process.env.VERTEX_AI_LOCATION || 'us-central1';
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
     let ai: GoogleGenAI;
-    if (projectId) {
-      // Use ADC to obtain an OAuth2 access token for Vertex AI
-      const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-      const token = await auth.getAccessToken();
-      ai = new GoogleGenAI({
-        vertexai: true,
-        project: projectId,
-        location: location,
-        httpOptions: {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      } as any);
-    } else if (apiKey && apiKey !== 'your-google-api-key') {
+    if (apiKey && apiKey !== 'your-google-api-key') {
       ai = new GoogleGenAI({ apiKey });
     } else {
       console.warn('[API /stamps/segment] Missing AI credentials. Using rotating mock.');

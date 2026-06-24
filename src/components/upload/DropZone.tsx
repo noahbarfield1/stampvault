@@ -248,7 +248,7 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         <input {...getInputProps()} />
         <span className={styles.icon}>{isDragActive ? '📥' : '☁️'}</span>
         <h3 className={styles.title}>
-          {isDragActive ? 'Drop your images here' : 'What would you like to upload?'}
+          {isDragActive ? 'Drop your images here' : 'Upload Stamp Images'}
         </h3>
         
         <div className={styles.modeCards}>
@@ -269,7 +269,7 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         </div>
 
         <p className={styles.formats}>
-          Accepted: JPEG, PNG, WebP, HEIC
+          Drag and drop your stamp images, or use the buttons below. Accepted: JPEG, PNG, WebP, HEIC
         </p>
       </div>
 
