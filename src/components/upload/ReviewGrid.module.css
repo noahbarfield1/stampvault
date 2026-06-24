@@ -154,6 +154,10 @@
   color: white;
 }
 
+.cardConfidenceMeter {
+  margin-bottom: var(--space-3);
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

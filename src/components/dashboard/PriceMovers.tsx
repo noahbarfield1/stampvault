@@ -41,26 +41,34 @@ export default function PriceMovers({ movers }: PriceMoversProps) {
 
             return (
               <div key={mover.stamp.id} className={styles.row}>
-                <div className={styles.thumbnailPlaceholder}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect
-                      x="2"
-                      y="2"
-                      width="12"
-                      height="12"
-                      rx="1"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" />
-                  </svg>
-                </div>
+                {mover.stamp.imageUrl || mover.stamp.thumbnailUrl ? (
+                  <img
+                    className={styles.thumbnail}
+                    src={mover.stamp.imageUrl || (mover.stamp.thumbnailUrl ?? undefined)}
+                    alt={mover.stamp.identification.description}
+                  />
+                ) : (
+                  <div className={styles.thumbnailPlaceholder}>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        x="2"
+                        y="2"
+                        width="12"
+                        height="12"
+                        rx="1"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                      <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                )}
 
                 <div className={styles.info}>
                   <div className={styles.stampName}>

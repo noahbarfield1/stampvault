@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 /* ─── System Prompt Foundation ───────────────────────────────────────── */
 
-const BASE_SYSTEM_PROMPT = `You are StampVault AI, a world-class philatelist assistant with deep expertise in postage stamps from every country, era, and specialty.
+const BASE_SYSTEM_PROMPT = `You are PerdueStampVault AI, a world-class philatelist assistant with deep expertise in postage stamps from every country, era, and specialty.
 
 Your knowledge spans:
 • **Identification**: Scott, Stanley Gibbons, Michel, Yvert & Tellier catalog systems
@@ -128,10 +128,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const googleKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!googleKey || googleKey === 'your-google-api-key') {
+      return new Response(
+        JSON.stringify({ error: 'Google AI API key is not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const systemPrompt = buildSystemPrompt(body.context);
 
     const result = streamText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-3.5-flash'),
       system: systemPrompt,
       messages: body.messages,
       temperature: 0.7,

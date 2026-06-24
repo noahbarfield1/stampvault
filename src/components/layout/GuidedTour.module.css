@@ -170,12 +170,54 @@
   user-select: none;
 }
 
-@media (max-width: 640px) {
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+  line-height: 1;
+}
+
+.closeBtn:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 860px) {
   .tourOverlay {
-    bottom: var(--space-20); /* Leave room for bottom mobile navigation */
+    bottom: 25%;
     right: var(--space-3);
     left: var(--space-3);
     width: auto;
     max-width: none;
+  }
+
+  .tourCard {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .stepTitle {
+    font-size: var(--text-sm);
+  }
+
+  .stepDescription {
+    font-size: var(--text-xs);
+    line-height: 1.35;
+  }
+
+  .actions {
+    padding-top: var(--space-2);
   }
 }

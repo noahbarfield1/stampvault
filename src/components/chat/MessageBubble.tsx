@@ -230,7 +230,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               <path d="M15 18l1 4" />
             </svg>
           )}
-          {message.role === 'user' ? 'You' : 'StampVault AI'}
+          {message.role === 'user' ? 'You' : 'PerdueStampVault AI'}
         </div>
       )}
 

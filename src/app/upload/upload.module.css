@@ -1,5 +1,5 @@
 .page {
-  max-width: 960px;
+  max-width: 100vw;
   margin: 0 auto;
   padding: var(--space-6);
   width: 100%;
@@ -53,7 +53,7 @@
   composes: stepCircle;
   background: transparent;
   border-color: var(--color-glass-border);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .stepCircleActive {
@@ -80,7 +80,7 @@
 
 .stepLabelPending {
   composes: stepLabel;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .stepLabelActive {
@@ -160,6 +160,73 @@
 .navBackBtn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ── Mode Selection ── */
+.modeSelection {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-glass);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.modeLabel {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.modeButtons {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  justify-content: center;
+}
+
+.modeButton {
+  flex: 1;
+  max-width: 320px;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.modeButton:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-glass-border-hover);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.modeButtonActive {
+  flex: 1;
+  max-width: 320px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-glass-active);
+  border: 1px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-gold);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  box-shadow: var(--shadow-glow);
+  text-align: center;
 }
 
 /* ── Responsive ────────────────────────────────────────────────────── */

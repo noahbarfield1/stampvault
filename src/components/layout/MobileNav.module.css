@@ -16,7 +16,7 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 860px) {
   .mobileNav {
     display: flex;
   }

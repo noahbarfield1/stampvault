@@ -76,6 +76,12 @@
   color: var(--color-negative);
 }
 
+.panelConfidenceMeter {
+  max-width: 160px;
+  margin: var(--space-3) auto 0;
+}
+
+
 /* ── Sources list ──────────────────────────────────────────────────── */
 
 .sourcesTitle {

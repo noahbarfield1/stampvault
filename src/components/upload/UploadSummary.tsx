@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 import type { Stamp } from '@/types/stamp';
 import GoldButton from '@/components/ui/GoldButton';
 import EditStampModal from './EditStampModal';
+import ConfidenceMeter from '@/components/ui/ConfidenceMeter';
 import styles from './UploadSummary.module.css';
+
 
 interface UploadSummaryProps {
   stamps: Partial<Stamp>[];
@@ -72,10 +74,10 @@ export default function UploadSummary({
             <div className={styles.comparisonContainer}>
               <div className={styles.imageColumn}>
                 <span className={styles.imageBadge}>Uploaded Crop</span>
-                {stamp.imageUrl ? (
+                {stamp.imageUrl || stamp.thumbnailUrl ? (
                   <img
                     className={styles.comparisonImage}
-                    src={stamp.imageUrl}
+                    src={stamp.imageUrl || (stamp.thumbnailUrl ?? undefined)}
                     alt="Uploaded stamp crop"
                   />
                 ) : (
@@ -85,11 +87,19 @@ export default function UploadSummary({
               <div className={styles.imageColumn}>
                 <span className={styles.imageBadge}>Catalog Reference</span>
                 {stamp.identification?.referenceImageUrl ? (
-                  <img
-                    className={styles.comparisonImage}
-                    src={stamp.identification.referenceImageUrl || undefined}
-                    alt="Catalog reference"
-                  />
+                  <a
+                    href={`https://www.hipstamp.com/search?q=${encodeURIComponent((stamp.identification.country || '') + ' ' + (stamp.identification.scottNumber || ''))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'block', textDecoration: 'none' }}
+                    title="View catalog reference on Hipstamp"
+                  >
+                    <img
+                      className={styles.comparisonImage}
+                      src={stamp.identification.referenceImageUrl || undefined}
+                      alt="Catalog reference"
+                    />
+                  </a>
                 ) : (
                   <div className={styles.cardImagePlaceholder}>🔍</div>
                 )}
@@ -103,17 +113,11 @@ export default function UploadSummary({
                   {stamp.identification?.description ?? `Stamp #${index + 1}`}
                 </h3>
                 {stamp.identification?.confidence !== undefined && (
-                  <span
-                    className={`${styles.confidenceBadge} ${
-                      stamp.identification.confidence >= 0.8
-                        ? styles.confidenceHigh
-                        : stamp.identification.confidence >= 0.6
-                        ? styles.confidenceMedium
-                        : styles.confidenceLow
-                    }`}
-                  >
-                    {Math.round(stamp.identification.confidence * 100)}% Match
-                  </span>
+                  <ConfidenceMeter
+                    confidence={stamp.identification.confidence}
+                    label="Match"
+                    className={styles.cardConfidenceMeter}
+                  />
                 )}
               </div>
 
@@ -209,6 +213,53 @@ export default function UploadSummary({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Alternatives Section */}
+              {stamp.identification?.alternatives && stamp.identification.alternatives.length > 0 && (
+                <div className={styles.alternativesSection}>
+                  <div className={styles.alternativesHeader}>
+                    <span className={styles.alternativesLabel}>Other Possibilities</span>
+                  </div>
+                  <div className={styles.alternativesList}>
+                    {stamp.identification.alternatives.map((alt, aIdx) => (
+                      <div key={aIdx} className={styles.alternativeCard}>
+                        {alt.referenceImageUrl ? (
+                          <img src={alt.referenceImageUrl} alt="Alt Ref" className={styles.altImage} />
+                        ) : (
+                          <div className={styles.altImagePlaceholder}>🔍</div>
+                        )}
+                        <div className={styles.altInfo}>
+                          <span className={styles.altScott}>{alt.scottNumber ? `#${alt.scottNumber}` : 'Unknown'}</span>
+                          <span className={styles.altDesc}>{alt.description}</span>
+                          <span className={styles.altConf}>{Math.round(alt.confidence * 100)}% Match</span>
+                        </div>
+                        {onUpdateStamp && (
+                          <button
+                            type="button"
+                            className={styles.swapBtn}
+                            onClick={() => {
+                              onUpdateStamp(index, {
+                                ...stamp,
+                                identification: {
+                                  ...stamp.identification!,
+                                  scottNumber: alt.scottNumber,
+                                  description: alt.description,
+                                  confidence: alt.confidence,
+                                  referenceImageUrl: alt.referenceImageUrl || stamp.identification!.referenceImageUrl,
+                                },
+                                // Clear pricing so it gets re-fetched or shown as empty
+                                pricing: null,
+                              });
+                            }}
+                          >
+                            Swap
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               

@@ -67,33 +67,41 @@ export default function RarestStamps({ stamps }: RarestStampsProps) {
             whileHover={{ y: -2 }}
           >
             <div className={styles.thumbnailWrapper}>
-              <div className={styles.thumbnailPlaceholder}>
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <rect
-                    x="4"
-                    y="4"
-                    width="24"
-                    height="24"
-                    rx="2"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeDasharray="3 2"
-                  />
-                  <circle cx="16" cy="14" r="4" stroke="currentColor" strokeWidth="1.5" />
-                  <path
-                    d="M10 24C10 21 12.5 19 16 19C19.5 19 22 21 22 24"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
+              {stamp.imageUrl || stamp.thumbnailUrl ? (
+                <img
+                  src={stamp.imageUrl || (stamp.thumbnailUrl ?? undefined)}
+                  alt={stamp.identification.description}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div className={styles.thumbnailPlaceholder}>
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 32 32"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="4"
+                      y="4"
+                      width="24"
+                      height="24"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 2"
+                    />
+                    <circle cx="16" cy="14" r="4" stroke="currentColor" strokeWidth="1.5" />
+                    <path
+                      d="M10 24C10 21 12.5 19 16 19C19.5 19 22 21 22 24"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
 
             <div className={styles.stampName}>{getShortName(stamp)}</div>

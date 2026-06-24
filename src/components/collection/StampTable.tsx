@@ -20,11 +20,12 @@ const CONDITION_LABELS: Record<StampCondition, string> = {
 };
 
 function formatCurrency(value: number): string {
+  const hasCents = value % 1 !== 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents || value < 100 ? 2 : 0,
+    maximumFractionDigits: hasCents || value < 100 ? 2 : 0,
   }).format(value);
 }
 

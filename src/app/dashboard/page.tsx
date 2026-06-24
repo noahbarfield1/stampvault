@@ -5,14 +5,8 @@ import { motion, type Variants } from 'framer-motion';
 import { useUIStore } from '@/store/ui';
 import { useStampsStore } from '@/store/stamps';
 import type { Stamp } from '@/types/stamp';
-import {
-  mockStamps,
-  mockValueTrendData,
-  mockEraData,
-  mockPriceMovers,
-  mockCompletionSets,
-  mockCollectionStats,
-} from '@/lib/mockData';
+import type { CollectionStats } from '@/types/collection';
+
 
 import StatCard from '@/components/dashboard/StatCard';
 import ValueTrendChart from '@/components/dashboard/ValueTrendChart';
@@ -29,7 +23,7 @@ import styles from './dashboard.module.css';
 function formatCurrency(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${val.toFixed(0)}`;
+  return `$${val.toFixed(val < 100 ? 2 : 0)}`;
 }
 
 /* ─── Icons (inline SVGs) ────────────────────────────────────────────── */
@@ -168,25 +162,136 @@ function SkeletonGrid() {
 /* ─── Dashboard Page ─────────────────────────────────────────────────── */
 
 export default function DashboardPage() {
+  const storeStamps = useStampsStore((s) => s.stamps);
   const setStamps = useStampsStore((s) => s.setStamps);
   const setCollectionStats = useStampsStore((s) => s.setCollectionStats);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [stamps, setLocalStamps] = useState<Stamp[]>([]);
 
-  /* Simulate Firestore fetch on mount */
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLocalStamps(mockStamps);
-      setStamps(mockStamps);
-      setCollectionStats(mockCollectionStats);
       setIsLoading(false);
-    }, 600);
+    }, 400);
 
     return () => clearTimeout(timer);
-  }, [setStamps, setCollectionStats]);
+  }, []);
 
-  /* Compute rarest stamps sorted by rarity tier */
+  /* Calculate collection stats dynamically from storeStamps */
+  const stats = useMemo<CollectionStats>(() => {
+    const totalStamps = storeStamps.length;
+    const totalValue = storeStamps.reduce((sum, s) => sum + (s.pricing?.estimatedValue ?? 0), 0);
+    const averageValue = totalStamps > 0 ? totalValue / totalStamps : 0;
+
+    // Find highest value stamp
+    let highestValue: CollectionStats['highestValue'] = null;
+    if (totalStamps > 0) {
+      const highest = [...storeStamps].sort((a, b) => {
+        return (b.pricing?.estimatedValue ?? 0) - (a.pricing?.estimatedValue ?? 0);
+      })[0];
+      highestValue = {
+        stampId: highest.id,
+        value: highest.pricing?.estimatedValue ?? 0,
+        title: highest.identification.description.split(' — ')[0],
+      };
+    }
+
+    // Find lowest value stamp
+    let lowestValue: CollectionStats['lowestValue'] = null;
+    if (totalStamps > 0) {
+      const lowest = [...storeStamps].sort((a, b) => {
+        return (a.pricing?.estimatedValue ?? 0) - (b.pricing?.estimatedValue ?? 0);
+      })[0];
+      lowestValue = {
+        stampId: lowest.id,
+        value: lowest.pricing?.estimatedValue ?? 0,
+        title: lowest.identification.description.split(' — ')[0],
+      };
+    }
+
+    // Average identification confidence
+    const totalConfidence = storeStamps.reduce((sum, s) => sum + (s.identification.confidence ?? 0), 0);
+    const averageConfidence = totalStamps > 0 ? totalConfidence / totalStamps : 0;
+
+    // Total countries
+    const countriesMap = new Map<string, number>();
+    storeStamps.forEach((s) => {
+      const c = s.identification.country || 'Unknown';
+      countriesMap.set(c, (countriesMap.get(c) || 0) + 1);
+    });
+    const totalCountries = countriesMap.size;
+    const topCountries = Array.from(countriesMap.entries())
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Condition breakdown
+    const conditionsMap = new Map<string, number>();
+    storeStamps.forEach((s) => {
+      const cond = s.identification.condition || 'unknown';
+      conditionsMap.set(cond, (conditionsMap.get(cond) || 0) + 1);
+    });
+    const conditionBreakdown = Array.from(conditionsMap.entries())
+      .map(([condition, count]) => ({ condition: condition as any, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Rarity breakdown
+    const raritiesMap = new Map<string, number>();
+    storeStamps.forEach((s) => {
+      const rar = s.identification.rarity || 'common';
+      raritiesMap.set(rar, (raritiesMap.get(rar) || 0) + 1);
+    });
+    const rarityBreakdown = Array.from(raritiesMap.entries())
+      .map(([rarity, count]) => ({ rarity: rarity as any, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Recently added (stamps added in last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentlyAdded = storeStamps.filter((s) => {
+      try {
+        return new Date(s.createdAt) >= thirtyDaysAgo;
+      } catch {
+        return false;
+      }
+    }).length;
+
+    // Value change 30d (aggregate value change percent)
+    const totalPreviousValue = storeStamps.reduce((sum, s) => {
+      let currentVal = s.pricing?.estimatedValue ?? 0;
+      let prevVal = currentVal;
+      if (s.priceHistory && s.priceHistory.length >= 2) {
+        prevVal = s.priceHistory[s.priceHistory.length - 2].value;
+      } else if (s.purchasePrice !== null) {
+        prevVal = s.purchasePrice;
+      }
+      return sum + prevVal;
+    }, 0);
+    const valueChange30d = totalPreviousValue > 0 ? ((totalValue - totalPreviousValue) / totalPreviousValue) * 100 : 0;
+
+    return {
+      totalStamps,
+      totalValue,
+      averageValue,
+      highestValue,
+      lowestValue,
+      totalCountries,
+      topCountries,
+      conditionBreakdown,
+      rarityBreakdown,
+      recentlyAdded,
+      valueChange30d,
+      averageConfidence,
+      priceHistoryAggregate: [],
+    };
+  }, [storeStamps]);
+
+  // Sync calculated stats back to store if needed
+  useEffect(() => {
+    if (stats) {
+      setCollectionStats(stats);
+    }
+  }, [stats, setCollectionStats]);
+
+  /* Compute rarest stamps sorted by rarity tier from storeStamps */
   const rarestStamps = useMemo(() => {
     const rarityOrder: Record<string, number> = {
       unique: 0,
@@ -198,17 +303,169 @@ export default function DashboardPage() {
       common: 6,
     };
 
-    return [...stamps]
+    return [...storeStamps]
       .sort(
         (a, b) =>
           (rarityOrder[a.identification.rarity] ?? 6) -
           (rarityOrder[b.identification.rarity] ?? 6)
       )
       .slice(0, 8);
-  }, [stamps]);
+  }, [storeStamps]);
 
-  /* Stats for stat cards */
-  const stats = mockCollectionStats;
+  /* Compute era timeline distribution dynamically from storeStamps */
+  const eraData = useMemo(() => {
+    const years = storeStamps
+      .map((s) => s.identification.year)
+      .filter((y): y is number => y !== null && y !== undefined);
+
+    if (years.length === 0) return [];
+
+    const minDecade = Math.floor(Math.min(...years) / 10) * 10;
+    const maxDecade = Math.floor(Math.max(...years) / 10) * 10;
+
+    const dataMap = new Map<number, number>();
+    for (let d = minDecade; d <= maxDecade; d += 10) {
+      dataMap.set(d, 0);
+    }
+
+    storeStamps.forEach((s) => {
+      const year = s.identification.year;
+      if (year !== null && year !== undefined) {
+        const decade = Math.floor(year / 10) * 10;
+        dataMap.set(decade, (dataMap.get(decade) || 0) + 1);
+      }
+    });
+
+    return Array.from(dataMap.entries())
+      .map(([decade, count]) => ({
+        era: `${decade}s`,
+        count,
+      }))
+      .sort((a, b) => parseInt(a.era) - parseInt(b.era));
+  }, [storeStamps]);
+
+  /* Compute price movers dynamically from storeStamps */
+  const priceMovers = useMemo(() => {
+    return storeStamps
+      .map((stamp) => {
+        let currentValue = stamp.pricing?.estimatedValue ?? 0;
+        let previousValue = currentValue;
+        
+        if (stamp.priceHistory && stamp.priceHistory.length >= 2) {
+          previousValue = stamp.priceHistory[stamp.priceHistory.length - 2].value;
+          currentValue = stamp.priceHistory[stamp.priceHistory.length - 1].value;
+        } else if (stamp.purchasePrice !== null) {
+          previousValue = stamp.purchasePrice;
+        }
+
+        if (previousValue === currentValue || previousValue === 0) {
+          return null;
+        }
+
+        const change = currentValue - previousValue;
+        const changePercent = (change / previousValue) * 100;
+
+        return {
+          stamp,
+          change,
+          changePercent,
+        };
+      })
+      .filter((mover): mover is NonNullable<typeof mover> => mover !== null)
+      .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
+      .slice(0, 5);
+  }, [storeStamps]);
+
+  /* Compute completion sets dynamically from storeStamps */
+  const completionSets = useMemo(() => {
+    return [
+      {
+        setName: 'US Air Mail (C1-C150)',
+        completed: storeStamps.filter((s) => s.identification.country === 'United States' && (s.identification.series?.toLowerCase().includes('air mail') || s.tags.includes('air-mail'))).length,
+        total: 150,
+      },
+      {
+        setName: 'Germany Germania Series',
+        completed: storeStamps.filter((s) => s.identification.country === 'Germany' && (s.identification.series?.toLowerCase().includes('germania') || s.identification.series?.toLowerCase().includes('imperial eagle'))).length,
+        total: 18,
+      },
+      {
+        setName: 'France Ceres & Napoleon',
+        completed: storeStamps.filter((s) => s.identification.country === 'France' && (s.identification.series?.toLowerCase().includes('ceres') || s.identification.series?.toLowerCase().includes('napoleon') || s.identification.series?.toLowerCase().includes('sage'))).length,
+        total: 12,
+      },
+      {
+        setName: 'Japan Dragon & Cherry Blossom',
+        completed: storeStamps.filter((s) => s.identification.country === 'Japan' && (s.identification.series?.toLowerCase().includes('dragon') || s.identification.series?.toLowerCase().includes('cherry blossom') || s.identification.series?.toLowerCase().includes('koban'))).length,
+        total: 8,
+      },
+      {
+        setName: 'Cape Triangulars',
+        completed: storeStamps.filter((s) => s.identification.country === 'South Africa' || s.identification.series?.toLowerCase().includes('cape triangular')).length,
+        total: 6,
+      },
+      {
+        setName: 'US Trans-Mississippi',
+        completed: storeStamps.filter((s) => s.identification.series?.toLowerCase().includes('trans-mississippi')).length,
+        total: 9,
+      },
+    ];
+  }, [storeStamps]);
+
+  /* Generate value trend chart data dynamically from storeStamps */
+  const valueTrendData = useMemo(() => {
+    const allDates = new Set<string>();
+    storeStamps.forEach((s) => {
+      s.priceHistory?.forEach((h) => {
+        if (h.date) {
+          allDates.add(h.date.split('T')[0]);
+        }
+      });
+    });
+
+    if (allDates.size === 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const totalVal = storeStamps.reduce((sum, s) => sum + (s.pricing?.estimatedValue ?? 0), 0);
+      return [
+        { date: '2026-01-01', value: totalVal * 0.95 },
+        { date: todayStr, value: totalVal },
+      ];
+    }
+
+    const sortedDates = Array.from(allDates).sort();
+    return sortedDates.map((date) => {
+      const dateMs = new Date(date).getTime();
+      const value = storeStamps.reduce((sum, stamp) => {
+        let stampVal = stamp.pricing?.estimatedValue ?? 0;
+        let closestHistoryVal = stampVal;
+        let closestDiff = Infinity;
+        
+        if (stamp.priceHistory && stamp.priceHistory.length > 0) {
+          stamp.priceHistory.forEach((h) => {
+            const hDateMs = new Date(h.date).getTime();
+            if (hDateMs <= dateMs) {
+              const diff = dateMs - hDateMs;
+              if (diff < closestDiff) {
+                closestDiff = diff;
+                closestHistoryVal = h.value;
+              }
+            }
+          });
+        } else if (stamp.purchasePrice !== null && stamp.purchaseDate) {
+          const pDateMs = new Date(stamp.purchaseDate).getTime();
+          if (pDateMs <= dateMs) {
+            closestHistoryVal = stamp.purchasePrice;
+          }
+        }
+        
+        return sum + closestHistoryVal;
+      }, 0);
+
+      return { date, value };
+    });
+  }, [storeStamps]);
+
+  const avgConfidence = (stats as any).averageConfidence ?? 0.85;
 
   return (
     <div className={styles.page}>
@@ -232,7 +489,7 @@ export default function DashboardPage() {
               value={stats.totalStamps.toLocaleString()}
               icon={<StampIcon />}
               trend={{ value: 8.3, isPositive: true }}
-              subtitle="4 added this month"
+              subtitle={`${stats.recentlyAdded} new · ${Math.round(avgConfidence * 100)}% AI`}
             />
             <StatCard
               title="Total Value"
@@ -258,23 +515,24 @@ export default function DashboardPage() {
 
           {/* ─── Charts Row ──────────────────────────────────── */}
           <motion.div className={styles.chartsRow} variants={itemVariants}>
-            <ValueTrendChart data={mockValueTrendData} />
-            <EraTimeline data={mockEraData} />
+            <ValueTrendChart data={valueTrendData} />
+            <EraTimeline data={eraData} />
           </motion.div>
 
           {/* ─── Panels Row ──────────────────────────────────── */}
           <motion.div className={styles.panelsRow} variants={itemVariants}>
-            <PriceMovers movers={mockPriceMovers} />
+            <PriceMovers movers={priceMovers} />
             <RarestStamps stamps={rarestStamps} />
-            <CompletionTracker sets={mockCompletionSets} />
+            <CompletionTracker sets={completionSets} />
           </motion.div>
 
           {/* ─── Recent Uploads ──────────────────────────────── */}
           <motion.div className={styles.recentRow} variants={itemVariants}>
-            <RecentUploads stamps={stamps} />
+            <RecentUploads stamps={storeStamps} />
           </motion.div>
         </motion.div>
       )}
     </div>
   );
 }
+

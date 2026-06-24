@@ -102,10 +102,37 @@ export default function StampDetailPage({ params }: StampDetailPageProps) {
       <div className={styles.layout}>
         {/* Left Column */}
         <div className={styles.leftColumn}>
-          <ZoomableImage
-            src={stamp.imageUrl}
-            alt={stamp.identification.description}
-          />
+          {stamp.identification?.referenceImageUrl ? (
+            <div className={styles.comparisonContainer}>
+              <div className={styles.imageColumn}>
+                <span className={styles.imageBadge}>Your Stamp</span>
+                <ZoomableImage
+                  src={stamp.imageUrl || (stamp.thumbnailUrl ?? '')}
+                  alt={stamp.identification.description}
+                />
+              </div>
+              <div className={styles.imageColumn}>
+                <span className={styles.imageBadge}>Catalog Reference</span>
+                <a
+                  href={`https://www.hipstamp.com/search?q=${encodeURIComponent((stamp.identification.country || '') + ' ' + (stamp.identification.scottNumber || ''))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', textDecoration: 'none' }}
+                  title="View catalog reference on Hipstamp"
+                >
+                  <ZoomableImage
+                    src={stamp.identification.referenceImageUrl}
+                    alt="Catalog Reference"
+                  />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <ZoomableImage
+              src={stamp.imageUrl || (stamp.thumbnailUrl ?? '')}
+              alt={stamp.identification.description}
+            />
+          )}
 
           <MetadataAccordion
             stamp={stamp}

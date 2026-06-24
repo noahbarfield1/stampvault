@@ -16,7 +16,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'Dashboard Command Center',
     path: '/dashboard',
-    description: 'Welcome to StampVault! This screen displays your collection health metrics, total portfolio estimated value, recent additions, and your stamp distribution across historical eras.',
+    description: 'Welcome to PerdueStampVault! This screen displays your collection health metrics, total portfolio estimated value, recent additions, and your stamp distribution across historical eras.',
   },
   {
     title: 'Smart Collection Browser',
@@ -64,15 +64,21 @@ export default function GuidedTour() {
     }
   }, [tourActive, tourDisabled, pathname, startTour]);
 
-  // Sync route on step change
+  // Push route when tour step changes
   useEffect(() => {
     if (tourActive && TOUR_STEPS[tourStep]) {
-      const targetPath = TOUR_STEPS[tourStep].path;
-      if (pathname !== targetPath) {
-        router.push(targetPath);
+      router.push(TOUR_STEPS[tourStep].path);
+    }
+  }, [tourActive, tourStep, router]);
+
+  // End tour if user navigates away manually
+  useEffect(() => {
+    if (tourActive && TOUR_STEPS[tourStep]) {
+      if (pathname !== TOUR_STEPS[tourStep].path) {
+        endTour();
       }
     }
-  }, [tourActive, tourStep, pathname, router]);
+  }, [pathname]); // Only depend on pathname so we detect manual clicks
 
   if (!tourActive) {
     return null;
@@ -116,9 +122,19 @@ export default function GuidedTour() {
           {/* Progress Indicator */}
           <div className={styles.progressRow}>
             <span className={styles.badge}>Guided Tour</span>
-            <span className={styles.stepCounter}>
-              Step {tourStep + 1} of {TOUR_STEPS.length}
-            </span>
+            <div className={styles.topActions}>
+              <span className={styles.stepCounter}>
+                Step {tourStep + 1} of {TOUR_STEPS.length}
+              </span>
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={endTour}
+                aria-label="Close tutorial"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Step Content */}

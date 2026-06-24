@@ -8,13 +8,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { GoogleAuth } from 'google-auth-library';
+import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const SEGMENTATION_PROMPT = `You are an expert philatelist and computer-vision specialist.
 
-Analyze the provided image of an album page or stock page. Detect every individual postage stamp visible in the image.
+Analyze the provided image and detect every individual postage stamp visible.
 
 For EACH stamp found return a JSON object with exactly these fields:
 - "boundingBox": { "x1": <number>, "y1": <number>, "x2": <number>, "y2": <number> }
@@ -25,13 +27,17 @@ For EACH stamp found return a JSON object with exactly these fields:
 
 Return a JSON array of these objects. If no stamps are found, return an empty array [].
 
+If the image shows a SINGLE stamp (not an album page), return a single detection covering the entire visible stamp area.
+
 Critical rules:
 1. Coordinates are PERCENTAGES of image dimensions, NOT pixels.
 2. Include partially visible stamps but lower their confidence below 0.5.
 3. Do NOT include album page borders, page numbers, labels, or non-stamp elements.
 4. Do NOT include stamp mounts, hinges, or sleeves as separate items.
 5. If multiple stamps overlap, identify each one separately.
-6. For blocks or strips of connected stamps, identify the entire block as one item.`;
+6. For blocks or strips of connected stamps, identify the entire block as one item.
+7. Each bounding box must have width >= 3% and height >= 3% of the image dimensions.
+8. If the image is NOT a stamp or album page (e.g., a regular photo), return an empty array.`;
 
 interface SegmentRequestBody {
   imageBase64: string;
@@ -49,6 +55,31 @@ interface RawDetectedStamp {
   confidence?: number;
 }
 
+/**
+ * Generate rotating mock segmentation instead of always returning Inverted Jenny.
+ */
+function generateRotatingMockSegmentation(imageBase64: string) {
+  let hash = 0;
+  const sample = imageBase64.slice(0, 200);
+  for (let i = 0; i < sample.length; i++) {
+    hash = ((hash << 5) - hash + sample.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(hash) % VERIFIED_STAMPS.length;
+  const stamp = VERIFIED_STAMPS[idx];
+
+  return {
+    stamps: [
+      {
+        boundingBox: { x1: 5, y1: 5, x2: 95, y2: 95 },
+        description: stamp.description,
+        confidence: 0.85,
+      },
+    ],
+    count: 1,
+    _mockMode: true,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SegmentRequestBody;
@@ -60,15 +91,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const projectId = process.env.VERTEX_AI_PROJECT_ID;
+    const location = process.env.VERTEX_AI_LOCATION || 'us-central1';
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'GOOGLE_API_KEY is not configured on the server' },
-        { status: 500 },
-      );
-    }
 
-    const ai = new GoogleGenAI({ apiKey });
+    let ai: GoogleGenAI;
+    if (projectId) {
+      // Use ADC to obtain an OAuth2 access token for Vertex AI
+      const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+      const token = await auth.getAccessToken();
+      ai = new GoogleGenAI({
+        vertexai: true,
+        project: projectId,
+        location: location,
+        httpOptions: {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      } as any);
+    } else if (apiKey && apiKey !== 'your-google-api-key') {
+      ai = new GoogleGenAI({ apiKey });
+    } else {
+      console.warn('[API /stamps/segment] Missing AI credentials. Using rotating mock.');
+      return NextResponse.json(generateRotatingMockSegmentation(body.imageBase64));
+    }
 
     // Strip data URL prefix if present
     const cleanBase64 = body.imageBase64.replace(
@@ -78,7 +123,7 @@ export async function POST(req: NextRequest) {
     const mime = body.mimeType || 'image/jpeg';
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: [
         {
           role: 'user',
@@ -120,7 +165,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validate and clamp bounding boxes
+    // Validate and clamp bounding boxes with stricter rules
     const stamps = parsed
       .filter(
         (s): s is Required<RawDetectedStamp> =>
@@ -143,7 +188,13 @@ export async function POST(req: NextRequest) {
         },
         description: s.description || 'Unknown stamp',
         confidence: Math.max(0, Math.min(1, s.confidence!)),
-      }));
+      }))
+      .filter((s) => {
+        // Reject impossibly small or impossibly large detections
+        const width = s.boundingBox.x2 - s.boundingBox.x1;
+        const height = s.boundingBox.y2 - s.boundingBox.y1;
+        return width >= 2 && height >= 2 && width <= 98 && height <= 98;
+      });
 
     return NextResponse.json({ stamps, count: stamps.length });
   } catch (error) {

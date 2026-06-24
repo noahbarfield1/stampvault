@@ -5,19 +5,19 @@
 
 :root {
   /* ── Color Palette ── */
-  --color-bg-primary: #0a0a0f;
-  --color-bg-secondary: #0f0f19;
-  --color-bg-tertiary: #141420;
-  --color-bg-elevated: #1a1a2e;
-  --color-bg-hover: #1f1f35;
+  --color-bg-primary: #050508;
+  --color-bg-secondary: #0b0b0f;
+  --color-bg-tertiary: #111116;
+  --color-bg-elevated: #17171e;
+  --color-bg-hover: #1e1e28;
 
   /* Glassmorphism surfaces */
-  --color-glass: rgba(15, 15, 25, 0.8);
-  --color-glass-hover: rgba(25, 25, 40, 0.85);
-  --color-glass-active: rgba(35, 35, 55, 0.9);
-  --color-glass-border: rgba(212, 165, 116, 0.12);
-  --color-glass-border-hover: rgba(212, 165, 116, 0.25);
-  --color-glass-border-active: rgba(212, 165, 116, 0.4);
+  --color-glass: rgba(11, 11, 15, 0.75);
+  --color-glass-hover: rgba(23, 23, 30, 0.8);
+  --color-glass-active: rgba(30, 30, 40, 0.85);
+  --color-glass-border: rgba(212, 165, 116, 0.1);
+  --color-glass-border-hover: rgba(212, 165, 116, 0.22);
+  --color-glass-border-active: rgba(212, 165, 116, 0.35);
 
   /* Gold/Amber Accent */
   --color-accent-gold: #d4a574;
@@ -44,11 +44,11 @@
   --color-info-border: rgba(59, 130, 246, 0.3);
 
   /* Text Colors */
-  --color-text-primary: #e8e4dd;
-  --color-text-secondary: #8a8578;
-  --color-text-tertiary: #5c574e;
+  --color-text-primary: #eae6df;
+  --color-text-secondary: #8c887e;
+  --color-text-tertiary: #5e5a51;
   --color-text-accent: #d4a574;
-  --color-text-inverse: #0a0a0f;
+  --color-text-inverse: #050508;
 
   /* Chart Colors */
   --chart-gold: #d4a574;

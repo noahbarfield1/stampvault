@@ -33,7 +33,7 @@ export async function getStamp(stampId: string): Promise<Stamp | null> {
     return { id: doc.id, ...doc.data() } as Stamp;
   } catch (error) {
     console.error('[Firestore] Error getting stamp:', error);
-    return null;
+    throw error;
   }
 }
 

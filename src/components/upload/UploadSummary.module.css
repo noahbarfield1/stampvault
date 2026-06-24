@@ -81,7 +81,7 @@
 
 .comparisonContainer {
   display: flex;
-  width: 380px;
+  width: 460px;
   background: rgba(0, 0, 0, 0.2);
   border-right: 1px solid var(--color-glass-border);
   flex-shrink: 0;
@@ -97,10 +97,11 @@
   align-items: center;
   background: rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  backdrop-filter: var(--glass-blur-light);
 }
 
 .imageColumn:first-child {
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid var(--color-glass-border);
 }
 
 .imageBadge {
@@ -109,7 +110,7 @@
   left: var(--space-2);
   background: rgba(10, 10, 15, 0.75);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-glass-border);
   color: var(--color-text-secondary);
   font-family: var(--font-ui);
   font-size: 9px;
@@ -123,7 +124,7 @@
 
 .comparisonImage {
   width: 100%;
-  height: 240px;
+  height: 280px;
   object-fit: contain;
   padding: var(--space-3);
   display: block;
@@ -217,9 +218,7 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .rarityText,
@@ -380,7 +379,133 @@
   border-color: rgba(212, 165, 116, 0.3);
 }
 
+.cardConfidenceMeter {
+  width: 130px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* ── Alternatives ────────────────────────────────────────────────────── */
+
+.alternativesSection {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--color-glass-border);
+}
+
+.alternativesHeader {
+  margin-bottom: var(--space-3);
+}
+
+.alternativesLabel {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.alternativesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.alternativeCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-glass-border);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
+}
+
+.alternativeCard:hover {
+  border-color: rgba(212, 165, 116, 0.4);
+}
+
+.altImage,
+.altImagePlaceholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.altImagePlaceholder {
+  background: var(--color-surface-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+}
+
+.altInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.altScott {
+  font-family: var(--font-mono);
+  font-size: var(--font-sm);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.altDesc {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.altConf {
+  font-size: 10px;
+  color: var(--color-accent-gold);
+}
+
+.swapBtn {
+  font-family: inherit;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(212, 165, 116, 0.1);
+  color: var(--color-accent-gold);
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.swapBtn:hover {
+  background: rgba(212, 165, 116, 0.2);
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .card {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .comparisonContainer {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-glass-border);
+  }
+
+  .infoGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 @media (max-width: 640px) {
   .grid {
@@ -389,5 +514,49 @@
 
   .headerStats {
     gap: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparisonImage,
+  .cardImagePlaceholder {
+    height: 180px;
+  }
+
+  .footer {
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+  }
+
+  .cancelButton {
+    padding: var(--space-3) 0;
+    text-align: center;
+  }
+
+  .pricingSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .sourcesList {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .sourcesPills {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .sourcePill {
+    flex-grow: 1;
+    justify-content: center;
   }
 }

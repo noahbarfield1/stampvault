@@ -28,3 +28,7 @@ export type { ProgressBarProps } from './ProgressBar';
 
 export { default as CountryFlag } from './CountryFlag';
 export type { CountryFlagProps } from './CountryFlag';
+
+export { default as ConfidenceMeter } from './ConfidenceMeter';
+export type { ConfidenceMeterProps } from './ConfidenceMeter';
+

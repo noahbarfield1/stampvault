@@ -306,7 +306,7 @@ export default function ChatPanel() {
               {messages.length === 0 && !isTyping && (
                 <div className={styles.welcome}>
                   <span className={styles.welcomeIcon}>🤖</span>
-                  <h3 className={styles.welcomeTitle}>StampVault AI</h3>
+                  <h3 className={styles.welcomeTitle}>PerdueStampVault AI</h3>
                   <p className={styles.welcomeText}>
                     Ask me about your stamps, market trends, identification help,
                     or collection insights. I&apos;m here to help!

@@ -97,7 +97,7 @@ export function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             >
-              StampVault
+              Perdue Stamp Vault
             </motion.span>
           )}
         </AnimatePresence>

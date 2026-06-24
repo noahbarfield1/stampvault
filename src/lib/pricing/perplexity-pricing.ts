@@ -216,7 +216,8 @@ export async function searchDelcampePrices(
 3. The listing title
 4. Any condition information
 
-Format each finding clearly with the price prominently displayed. Focus on recent sold prices and current active listings. Be precise with numbers.`;
+Format each finding clearly with the price prominently displayed. Focus on recent sold prices and current active listings. Be precise with numbers. 
+CRITICAL: If you cannot find any relevant pricing data for this specific stamp, be completely honest and state that no data was found. Do not invent or guess prices.`;
 
   const userPrompt = `Find stamp prices on Delcampe for: "${stampDescription}"
 

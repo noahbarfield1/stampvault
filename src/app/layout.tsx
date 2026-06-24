@@ -23,7 +23,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'StampVault | AI-Powered Stamp Collection',
+  title: 'PerdueStampVault | AI-Powered Stamp Collection',
   description:
     'Premium AI-powered stamp identification, cataloging, and price tracking application',
   keywords: 'stamps, philately, collection, identification, pricing, AI',

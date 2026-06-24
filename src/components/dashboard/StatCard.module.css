@@ -8,6 +8,8 @@
   padding: var(--space-5);
   cursor: pointer;
   overflow: hidden;
+  outline: 1px solid rgba(212, 165, 116, 0.05);
+  outline-offset: -3px;
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 

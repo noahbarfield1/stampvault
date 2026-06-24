@@ -86,40 +86,48 @@ export default function RecentUploads({ stamps }: RecentUploadsProps) {
               transition={{ delay: index * 0.06, duration: 0.35 }}
             >
               <div className={styles.imageWrapper}>
-                <div className={styles.imagePlaceholder}>
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect
-                      x="3"
-                      y="3"
-                      width="22"
-                      height="22"
-                      rx="2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeDasharray="3 2"
-                    />
-                    <path
-                      d="M8 20L12 14L15 17L18 12L20 20H8Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx="11"
-                      cy="10"
-                      r="2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                  <span>{stamp.identification.country}</span>
-                </div>
+                {stamp.imageUrl || stamp.thumbnailUrl ? (
+                  <img
+                    className={styles.image}
+                    src={(stamp.imageUrl || stamp.thumbnailUrl) ?? undefined}
+                    alt={stamp.identification.description}
+                  />
+                ) : (
+                  <div className={styles.imagePlaceholder}>
+                    <svg
+                      width="28"
+                      height="28"
+                      viewBox="0 0 28 28"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        x="3"
+                        y="3"
+                        width="22"
+                        height="22"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 2"
+                      />
+                      <path
+                        d="M8 20L12 14L15 17L18 12L20 20H8Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                      <circle
+                        cx="11"
+                        cy="10"
+                        r="2"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                    <span>{stamp.identification.country}</span>
+                  </div>
+                )}
                 <div className={styles.countryFlag}>{flag}</div>
               </div>
 

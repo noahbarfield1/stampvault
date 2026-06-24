@@ -100,6 +100,12 @@ export interface StampIdentification {
   confidence: number;
   status: IdentificationStatus;
   referenceImageUrl?: string | null;
+  alternatives?: Array<{
+    scottNumber: string | null;
+    description: string;
+    confidence: number;
+    referenceImageUrl?: string | null;
+  }>;
 }
 
 /* ─── Stamp (primary domain entity) ──────────────────────────────────── */

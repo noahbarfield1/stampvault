@@ -1,171 +1,173 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import CollectionValueChart from '@/components/prices/CollectionValueChart';
 import PriceMoversTable from '@/components/prices/PriceMoversTable';
 import SourceBreakdown from '@/components/prices/SourceBreakdown';
 import GoldButton from '@/components/ui/GoldButton';
 import type { Stamp } from '@/types/stamp';
+import { useStampsStore } from '@/store/stamps';
 import styles from './prices.module.css';
 
-/* ─── Mock Data Generator ────────────────────────────────────────────── */
-
-function generateChartData() {
-  const data: { date: string; value: number; avgValue: number }[] = [];
-  const now = new Date();
-  let baseValue = 12400;
-
-  for (let i = 365; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const drift = (Math.random() - 0.48) * 200;
-    baseValue = Math.max(8000, baseValue + drift);
-    data.push({
-      date: date.toISOString().split('T')[0],
-      value: Math.round(baseValue * 100) / 100,
-      avgValue: Math.round((baseValue / 87) * 100) / 100,
-    });
-  }
-  return data;
-}
-
-function createMockStamp(
-  id: string,
-  description: string,
-  country: string,
-  year: number,
-  imageUrl: string
-): Stamp {
-  return {
-    id,
-    userId: 'user-1',
-    imageUrl,
-    thumbnailUrl: imageUrl,
-    identification: {
-      country,
-      year,
-      denomination: null,
-      scottNumber: `SC-${id}`,
-      michelNumber: null,
-      description,
-      condition: 'very_fine',
-      rarity: 'rare',
-      color: null,
-      perforation: null,
-      watermark: null,
-      series: null,
-      confidence: 0.92,
-      status: 'identified',
-    },
-    pricing: {
-      estimatedValue: 150,
-      currency: 'USD',
-      confidence: 0.85,
-      sources: [],
-      priceRange: { min: 120, max: 200 },
-      lastUpdated: new Date().toISOString(),
-      hipValue: 145,
-      sourceBreakdown: {
-        hipstamp: { avg: 145, count: 3 },
-        ebay: { avg: 160, min: 120, max: 200, count: 8 },
-        delcampe: { avg: 140, count: 2 },
-        stampworld: { avg: 155, count: 1 },
-      },
-    },
-    priceHistory: [],
-    notes: '',
-    tags: [],
-    isFavorite: false,
-    purchasePrice: null,
-    purchaseDate: null,
-    grade: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-const MOCK_MOVERS = [
-  {
-    stamp: createMockStamp('1', '1847 5¢ Benjamin Franklin', 'United States', 1847, '/stamps/franklin.jpg'),
-    previousValue: 4250.0,
-    currentValue: 4890.0,
-    change: 640.0,
-    changePercent: 15.06,
-    source: 'eBay',
-  },
-  {
-    stamp: createMockStamp('2', '1856 British Guiana 1¢ Magenta', 'British Guiana', 1856, '/stamps/guiana.jpg'),
-    previousValue: 8750.0,
-    currentValue: 9200.0,
-    change: 450.0,
-    changePercent: 5.14,
-    source: 'HipStamp',
-  },
-  {
-    stamp: createMockStamp('3', '1918 Inverted Jenny 24¢', 'United States', 1918, '/stamps/jenny.jpg'),
-    previousValue: 1250.0,
-    currentValue: 1180.0,
-    change: -70.0,
-    changePercent: -5.6,
-    source: 'Delcampe',
-  },
-  {
-    stamp: createMockStamp('4', '1840 Penny Black', 'Great Britain', 1840, '/stamps/penny.jpg'),
-    previousValue: 3200.0,
-    currentValue: 3650.0,
-    change: 450.0,
-    changePercent: 14.06,
-    source: 'eBay',
-  },
-  {
-    stamp: createMockStamp('5', '1851 Baden 9 Kreuzer Error', 'Germany', 1851, '/stamps/baden.jpg'),
-    previousValue: 980.0,
-    currentValue: 920.0,
-    change: -60.0,
-    changePercent: -6.12,
-    source: 'StampWorld',
-  },
-  {
-    stamp: createMockStamp('6', '1855 Treskilling Yellow', 'Sweden', 1855, '/stamps/treskilling.jpg'),
-    previousValue: 2100.0,
-    currentValue: 2350.0,
-    change: 250.0,
-    changePercent: 11.9,
-    source: 'HipStamp',
-  },
-  {
-    stamp: createMockStamp('7', '1893 Columbian Exposition $5', 'United States', 1893, '/stamps/columbian.jpg'),
-    previousValue: 540.0,
-    currentValue: 510.0,
-    change: -30.0,
-    changePercent: -5.56,
-    source: 'eBay',
-  },
-];
-
-const MOCK_SOURCES = [
-  { source: 'eBay', count: 142, avgDeviation: 3.2 },
-  { source: 'HipStamp', count: 87, avgDeviation: -1.8 },
-  { source: 'Delcampe', count: 43, avgDeviation: -4.5 },
-  { source: 'StampWorld', count: 28, avgDeviation: 2.1 },
-  { source: 'Colnect', count: 15, avgDeviation: 0.8 },
-  { source: 'Manual', count: 12, avgDeviation: 0 },
-];
 
 /* ─── Page Component ─────────────────────────────────────────────────── */
 
 export default function PricesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const chartData = useMemo(() => generateChartData(), []);
+  const storeStamps = useStampsStore((s) => s.stamps);
+  
+  const stamps = storeStamps;
 
-  const totalValue = 24892.5;
-  const totalChange = 2340.0;
-  const totalChangePercent = 10.37;
-  const stampCount = 87;
-  const avgPerStamp = totalValue / stampCount;
-  const highestValue = 9200.0;
-  const lastUpdated = new Date().toLocaleString();
+  // Generate chart data based on actual collection value
+  const totalValue = useMemo(() => {
+    return stamps.reduce((sum, s) => sum + (s.pricing?.estimatedValue ?? 0), 0);
+  }, [stamps]);
+
+  const stampCount = stamps.length;
+
+  const avgPerStamp = useMemo(() => {
+    return stampCount > 0 ? totalValue / stampCount : 0;
+  }, [totalValue, stampCount]);
+
+  const highestValue = useMemo(() => {
+    return stamps.reduce((max, s) => {
+      const val = s.pricing?.estimatedValue ?? 0;
+      return val > max ? val : max;
+    }, 0);
+  }, [stamps]);
+
+  const totalChange = useMemo(() => {
+    return stamps.reduce((sum, s) => {
+      let currentVal = s.pricing?.estimatedValue ?? 0;
+      let prevVal = currentVal;
+      if (s.priceHistory && s.priceHistory.length >= 2) {
+        prevVal = s.priceHistory[s.priceHistory.length - 2].value;
+      } else if (s.purchasePrice !== null) {
+        prevVal = s.purchasePrice;
+      }
+      return sum + (currentVal - prevVal);
+    }, 0);
+  }, [stamps]);
+
+  const totalChangePercent = useMemo(() => {
+    const prevTotal = totalValue - totalChange;
+    return prevTotal > 0 ? (totalChange / prevTotal) * 100 : 0;
+  }, [totalValue, totalChange]);
+
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  const lastUpdated = isClient ? new Date().toLocaleString() : '';
+
+  const chartData = useMemo(() => {
+    const data: { date: string; value: number; avgValue: number }[] = [];
+    const now = new Date();
+    const currentValue = totalValue;
+
+    for (let i = 30; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const ratio = 1 - (i / 30) * (totalChange / (totalValue || 1));
+      const val = currentValue * ratio;
+      data.push({
+        date: date.toISOString().split('T')[0],
+        value: Math.round(val * 100) / 100,
+        avgValue: Math.round((val / (stampCount || 1)) * 100) / 100,
+      });
+    }
+    return data;
+  }, [totalValue, totalChange, stampCount]);
+
+  // Compute price movers dynamically from stamps
+  const priceMoversList = useMemo(() => {
+    return stamps
+      .map((stamp) => {
+        let currentValue = stamp.pricing?.estimatedValue ?? 0;
+        let previousValue = currentValue;
+        
+        if (stamp.priceHistory && stamp.priceHistory.length >= 2) {
+          previousValue = stamp.priceHistory[stamp.priceHistory.length - 2].value;
+          currentValue = stamp.priceHistory[stamp.priceHistory.length - 1].value;
+        } else if (stamp.purchasePrice !== null) {
+          previousValue = stamp.purchasePrice;
+        }
+
+        if (previousValue === currentValue || previousValue === 0) {
+          return null;
+        }
+
+        const change = currentValue - previousValue;
+        const changePercent = (change / previousValue) * 100;
+        const source = stamp.pricing?.sources?.[0]?.platform || 'eBay';
+        const formattedSource = source.charAt(0).toUpperCase() + source.slice(1);
+
+        return {
+          stamp,
+          previousValue,
+          currentValue,
+          change,
+          changePercent,
+          source: formattedSource,
+        };
+      })
+      .filter((mover): mover is NonNullable<typeof mover> => mover !== null)
+      .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+  }, [stamps]);
+
+  // Compute pricing sources breakdown dynamically from stamps
+  const pricingSourcesData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const deviationsSum: Record<string, number> = {};
+    const deviationsCount: Record<string, number> = {};
+
+    stamps.forEach((s) => {
+      const est = s.pricing?.estimatedValue ?? 0;
+      s.pricing?.sources?.forEach((src) => {
+        const plat = src.platform;
+        counts[plat] = (counts[plat] || 0) + 1;
+        if (est > 0) {
+          const dev = ((src.price - est) / est) * 100;
+          deviationsSum[plat] = (deviationsSum[plat] || 0) + dev;
+          deviationsCount[plat] = (deviationsCount[plat] || 0) + 1;
+        }
+      });
+
+      // Fallback: use sourceBreakdown counts if sources list is empty
+      if ((!s.pricing?.sources || s.pricing.sources.length === 0) && s.pricing?.sourceBreakdown) {
+        const breakdown = s.pricing.sourceBreakdown;
+        if (breakdown.ebay?.count) counts['ebay'] = (counts['ebay'] || 0) + breakdown.ebay.count;
+        if (breakdown.hipstamp?.count) counts['hipstamp'] = (counts['hipstamp'] || 0) + breakdown.hipstamp.count;
+        if (breakdown.delcampe?.count) counts['delcampe'] = (counts['delcampe'] || 0) + breakdown.delcampe.count;
+        if (breakdown.stampworld?.count) counts['stampworld'] = (counts['stampworld'] || 0) + breakdown.stampworld.count;
+      }
+    });
+
+    const platforms = ['ebay', 'hipstamp', 'delcampe', 'stampworld', 'colnect', 'manual'];
+    const displayNames: Record<string, string> = {
+      ebay: 'eBay',
+      hipstamp: 'HipStamp',
+      delcampe: 'Delcampe',
+      stampworld: 'StampWorld',
+      colnect: 'Colnect',
+      manual: 'Manual',
+    };
+
+    return platforms
+      .map((plat) => {
+        const count = counts[plat] || 0;
+        const sum = deviationsSum[plat] || 0;
+        const devCount = deviationsCount[plat] || 0;
+        const avgDeviation = devCount > 0 ? sum / devCount : 0;
+        return {
+          source: displayNames[plat] || plat,
+          count,
+          avgDeviation,
+        };
+      })
+      .filter((d) => d.count > 0);
+  }, [stamps]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -174,7 +176,6 @@ export default function PricesPage() {
   };
 
   const handleStampClick = (stampId: string) => {
-    /* In production, navigate to stamp detail */
     console.log('Navigate to stamp:', stampId);
   };
 
@@ -273,10 +274,10 @@ export default function PricesPage() {
         transition={{ duration: 0.5, delay: 0.3 }}
       >
         <PriceMoversTable
-          movers={MOCK_MOVERS}
+          movers={priceMoversList}
           onStampClick={handleStampClick}
         />
-        <SourceBreakdown data={MOCK_SOURCES} />
+        <SourceBreakdown data={pricingSourcesData} />
       </motion.div>
 
       {/* Footer */}
@@ -286,3 +287,4 @@ export default function PricesPage() {
     </div>
   );
 }
+

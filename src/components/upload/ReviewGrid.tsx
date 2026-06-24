@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { DetectedStamp } from './SegmentationOverlay';
+import ConfidenceMeter from '@/components/ui/ConfidenceMeter';
 import styles from './ReviewGrid.module.css';
 
 interface ReviewGridProps {
@@ -10,11 +11,7 @@ interface ReviewGridProps {
   onReject: (index: number) => void;
 }
 
-function getConfidenceClass(confidence: number): string {
-  if (confidence >= 0.8) return styles.confidenceHigh;
-  if (confidence >= 0.6) return styles.confidenceMedium;
-  return styles.confidenceLow;
-}
+
 
 export default function ReviewGrid({
   stamps,
@@ -52,11 +49,11 @@ export default function ReviewGrid({
                 <p className={styles.cardDescription}>
                   {stamp.description || `Detected stamp #${index + 1}`}
                 </p>
-                <p
-                  className={`${styles.cardConfidence} ${getConfidenceClass(stamp.confidence)}`}
-                >
-                  {Math.round(stamp.confidence * 100)}% confidence
-                </p>
+                <ConfidenceMeter
+                  confidence={stamp.confidence}
+                  label="confidence"
+                  className={styles.cardConfidenceMeter}
+                />
                 <div className={styles.cardActions}>
                   <button
                     className={

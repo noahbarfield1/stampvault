@@ -170,7 +170,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `stampvault-collection-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `perduestampvault-collection-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -191,7 +191,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `stampvault-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `perduestampvault-export-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -375,7 +375,7 @@ export default function SettingsPage() {
                   Enable Voice Commands
                 </span>
                 <span className={styles.toggleDescription}>
-                  Use voice to navigate, search, and interact with StampVault
+                  Use voice to navigate, search, and interact with PerdueStampVault
                 </span>
               </div>
               <button
@@ -547,32 +547,32 @@ export default function SettingsPage() {
               <div className={styles.aboutItem}>
                 <span className={styles.aboutLabel}>Documentation</span>
                 <a
-                  href="https://stampvault.app/docs"
+                  href="https://perduestampvault.app/docs"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.aboutLink}
                 >
-                  stampvault.app/docs
+                  perduestampvault.app/docs
                 </a>
               </div>
               <div className={styles.aboutItem}>
                 <span className={styles.aboutLabel}>GitHub</span>
                 <a
-                  href="https://github.com/stampvault"
+                  href="https://github.com/perduestampvault"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.aboutLink}
                 >
-                  github.com/stampvault
+                  github.com/perduestampvault
                 </a>
               </div>
               <div className={styles.aboutItem}>
                 <span className={styles.aboutLabel}>Support</span>
                 <a
-                  href="mailto:support@stampvault.app"
+                  href="mailto:support@perduestampvault.app"
                   className={styles.aboutLink}
                 >
-                  support@stampvault.app
+                  support@perduestampvault.app
                 </a>
               </div>
               <div className={styles.aboutItem}>

@@ -70,7 +70,7 @@ function generateResponse(query: string): string {
   }
 
   if (q.includes('store') || q.includes('storage') || q.includes('preserve')) {
-    return `**Best Practices for Stamp Storage:**\n\n📦 **Albums:**\n- Use **acid-free** stockbooks or hingeless albums\n- Lighthouse, Lindner, and Scott are top brands\n- Never use magnetic or self-adhesive pages\n\n🌡️ **Environment:**\n- Temperature: 65-72°F (18-22°C)\n- Humidity: 40-55% — use a dehumidifier if needed\n- Avoid direct sunlight and fluorescent lights\n- Keep away from basements and attics\n\n🔧 **Handling:**\n- Always use **stamp tongs** (not fingers)\n- Never touch the face of a stamp\n- Use a **magnifying glass** for examination\n- Handle over a soft, clean surface\n\n📎 **Mounting:**\n- **Mounts** (Showgard, Hawid) for mint stamps\n- **Hinges** are acceptable for used stamps only\n- Never tape, glue, or staple stamps\n\n⚡ **Insurance:**\n- Photograph your entire collection\n- Keep a digital inventory (StampVault handles this!)\n- Consider specialized collectibles insurance for values >$5,000`;
+    return `**Best Practices for Stamp Storage:**\n\n📦 **Albums:**\n- Use **acid-free** stockbooks or hingeless albums\n- Lighthouse, Lindner, and Scott are top brands\n- Never use magnetic or self-adhesive pages\n\n🌡️ **Environment:**\n- Temperature: 65-72°F (18-22°C)\n- Humidity: 40-55% — use a dehumidifier if needed\n- Avoid direct sunlight and fluorescent lights\n- Keep away from basements and attics\n\n🔧 **Handling:**\n- Always use **stamp tongs** (not fingers)\n- Never touch the face of a stamp\n- Use a **magnifying glass** for examination\n- Handle over a soft, clean surface\n\n📎 **Mounting:**\n- **Mounts** (Showgard, Hawid) for mint stamps\n- **Hinges** are acceptable for used stamps only\n- Never tape, glue, or staple stamps\n\n⚡ **Insurance:**\n- Photograph your entire collection\n- Keep a digital inventory (PerdueStampVault handles this!)\n- Consider specialized collectibles insurance for values >$5,000`;
   }
 
   if (q.includes('auction') || q.includes('result')) {
@@ -360,7 +360,7 @@ export default function AssistantPage() {
             >
               <span className={styles.welcomeEmoji}>🔬</span>
               <h2 className={styles.welcomeTitle}>
-                StampVault Research Assistant
+                PerdueStampVault Research Assistant
               </h2>
               <p className={styles.welcomeDescription}>
                 I can identify stamps from photos, research market values, analyze

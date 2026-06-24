@@ -133,7 +133,12 @@ async function fetchEbayPrices(
   query: string,
   condition?: string,
 ): Promise<PriceSource[]> {
-  if (!process.env.EBAY_CLIENT_ID || !process.env.EBAY_CLIENT_SECRET) {
+  if (
+    !process.env.EBAY_CLIENT_ID ||
+    process.env.EBAY_CLIENT_ID === 'your-ebay-client-id' ||
+    !process.env.EBAY_CLIENT_SECRET ||
+    process.env.EBAY_CLIENT_SECRET === 'your-ebay-client-secret'
+  ) {
     return [];
   }
   const { searchEbaySoldListings } = await import('@/lib/pricing/ebay');
@@ -141,7 +146,7 @@ async function fetchEbayPrices(
 }
 
 async function fetchHipStampPrices(query: string): Promise<PriceSource[]> {
-  if (!process.env.HIPSTAMP_API_KEY) {
+  if (!process.env.HIPSTAMP_API_KEY || process.env.HIPSTAMP_API_KEY === 'your-hipstamp-api-key') {
     return [];
   }
   const { searchHipStampListings } = await import('@/lib/pricing/hipstamp');
@@ -151,7 +156,7 @@ async function fetchHipStampPrices(query: string): Promise<PriceSource[]> {
 async function fetchDelcampePrices(
   description: string,
 ): Promise<PriceSource[]> {
-  if (!process.env.PERPLEXITY_API_KEY) {
+  if (!process.env.PERPLEXITY_API_KEY || process.env.PERPLEXITY_API_KEY === 'your-perplexity-api-key') {
     return [];
   }
   const { searchDelcampePrices } = await import(
@@ -163,7 +168,7 @@ async function fetchDelcampePrices(
 async function fetchStampWorldPrices(
   description: string,
 ): Promise<PriceSource[]> {
-  if (!process.env.PERPLEXITY_API_KEY) {
+  if (!process.env.PERPLEXITY_API_KEY || process.env.PERPLEXITY_API_KEY === 'your-perplexity-api-key') {
     return [];
   }
   const { searchStampWorldPrices } = await import(
@@ -173,7 +178,7 @@ async function fetchStampWorldPrices(
 }
 
 async function fetchHipValue(query: string): Promise<number | null> {
-  if (!process.env.HIPSTAMP_API_KEY) {
+  if (!process.env.HIPSTAMP_API_KEY || process.env.HIPSTAMP_API_KEY === 'your-hipstamp-api-key') {
     return null;
   }
   const { getHipValue } = await import('@/lib/pricing/hipstamp');

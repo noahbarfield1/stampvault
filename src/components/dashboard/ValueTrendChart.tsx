@@ -55,7 +55,7 @@ function filterDataByRange(
 function formatCurrency(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
-  return `$${val.toFixed(0)}`;
+  return `$${val.toFixed(val < 100 ? 2 : 0)}`;
 }
 
 function formatDate(dateStr: string): string {

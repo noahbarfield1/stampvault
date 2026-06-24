@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
 import type { Stamp } from '@/types/stamp';
+import { initialStamps } from '@/lib/stamps-data';
 import type {
   CollectionStats,
   FilterConfig,
@@ -233,36 +235,39 @@ function filterAndSortStamps(
   return result;
 }
 
-export const useStampsStore = create<StampsState>((set) => ({
-  /* Data */
-  stamps: [],
-  filteredStamps: [],
-  selectedStampId: null,
-  collectionStats: null,
+export const useStampsStore = create<StampsState>()(
+  devtools(
+    persist(
+      (set) => ({
+        /* Data */
+        stamps: initialStamps,
+        filteredStamps: initialStamps,
+        selectedStampId: null,
+        collectionStats: null,
 
-  /* Loading */
-  isLoading: false,
-  isStatsLoading: false,
+        /* Loading */
+        isLoading: false,
+        isStatsLoading: false,
 
-  /* View */
-  viewMode: 'grid',
-  setViewMode: (mode) => set({ viewMode: mode }),
+        /* View */
+        viewMode: 'grid',
+        setViewMode: (mode) => set({ viewMode: mode }),
 
-  /* Sort */
-  sortConfig: defaultSort,
-  setSortConfig: (config) =>
-    set((state) => ({
-      sortConfig: config,
-      sort: config,
-      filteredStamps: filterAndSortStamps(state.stamps, state.filters, config),
-    })),
-  sort: defaultSort,
-  setSort: (config) =>
-    set((state) => ({
-      sortConfig: config,
-      sort: config,
-      filteredStamps: filterAndSortStamps(state.stamps, state.filters, config),
-    })),
+        /* Sort */
+        sortConfig: defaultSort,
+        setSortConfig: (config) =>
+          set((state) => ({
+            sortConfig: config,
+            sort: config,
+            filteredStamps: filterAndSortStamps(state.stamps, state.filters, config),
+          })),
+        sort: defaultSort,
+        setSort: (config) =>
+          set((state) => ({
+            sortConfig: config,
+            sort: config,
+            filteredStamps: filterAndSortStamps(state.stamps, state.filters, config),
+          })),
 
   /* Filters */
   filters: defaultFilters,
@@ -381,4 +386,11 @@ export const useStampsStore = create<StampsState>((set) => ({
   setCollectionStats: (stats) => set({ collectionStats: stats }),
   setIsLoading: (loading) => set({ isLoading: loading }),
   setIsStatsLoading: (loading) => set({ isStatsLoading: loading }),
-}));
+      }),
+      {
+        name: 'stampvault-stamps',
+      }
+    ),
+    { name: 'StampVault:stamps' }
+  )
+);

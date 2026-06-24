@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { Stamp, PriceSource } from '@/types/stamp';
+import ConfidenceMeter from '@/components/ui/ConfidenceMeter';
 import styles from './PricingPanel.module.css';
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -19,11 +20,12 @@ function formatCurrency(value: number): string {
   if (value >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(2)}M`;
   }
+  const hasCents = value % 1 !== 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents || value < 100 ? 2 : 0,
+    maximumFractionDigits: hasCents || value < 100 ? 2 : 0,
   }).format(value);
 }
 
@@ -36,11 +38,7 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-function getConfidenceClass(confidence: number): string {
-  if (confidence >= 0.8) return styles.confidenceHigh;
-  if (confidence >= 0.6) return styles.confidenceMedium;
-  return styles.confidenceLow;
-}
+
 
 function getTypeClass(type: string): string {
   switch (type) {
@@ -127,9 +125,11 @@ export default function PricingPanel({
           Range: {formatCurrency(pricing.priceRange.min)} –{' '}
           {formatCurrency(pricing.priceRange.max)}
         </p>
-        <span className={getConfidenceClass(pricing.confidence)}>
-          {Math.round(pricing.confidence * 100)}% Confidence
-        </span>
+        <ConfidenceMeter
+          confidence={pricing.confidence}
+          label="Confidence"
+          className={styles.panelConfidenceMeter}
+        />
       </div>
 
       {/* Sources */}

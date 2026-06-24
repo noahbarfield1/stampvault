@@ -30,7 +30,7 @@ export function Header() {
         return title;
       }
     }
-    return 'StampVault';
+    return 'Perdue Stamp Vault';
   }, [pathname]);
 
   const isListening = voiceSession.isActive || voiceSession.isListening || false;
