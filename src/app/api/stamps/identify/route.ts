@@ -449,29 +449,61 @@ export async function POST(req: NextRequest) {
       })), null, 2
     );
 
-    const response = await genAI.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: IDENTIFICATION_PROMPT + "\n\n" + dbContext },
+    // gemini-3.1-pro-preview runs in mandatory "thinking" mode; left uncapped it
+    // burns 2000-2700 thinking tokens per call, pushing latency to ~20-25s and
+    // intermittently returning empty/truncated text — which previously fell
+    // through to a fabricated "Unknown" result at 0.5 confidence. Cap thinking to
+    // keep calls fast and deterministic, bound each attempt with a timeout (well
+    // under this route's 60s maxDuration), and retry transient failures instead
+    // of silently degrading.
+    let text = '';
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await genAI.models.generateContent({
+          model: 'gemini-3.1-pro-preview',
+          contents: [
             {
-              inlineData: {
-                data: body.imageBase64.replace(/^data:image\/\w+;base64,/, ''),
-                mimeType: body.mimeType || 'image/jpeg',
-              },
+              role: 'user',
+              parts: [
+                { text: IDENTIFICATION_PROMPT + "\n\n" + dbContext },
+                {
+                  inlineData: {
+                    data: body.imageBase64.replace(/^data:image\/\w+;base64,/, ''),
+                    mimeType: body.mimeType || 'image/jpeg',
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    });
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+            thinkingConfig: { thinkingBudget: 512 },
+            maxOutputTokens: 2048,
+            abortSignal: AbortSignal.timeout(22_000),
+          },
+        });
+        if (response.text && response.text.trim()) {
+          text = response.text;
+          break;
+        }
+        lastError = new Error('AI returned an empty response');
+        console.warn(`[API /stamps/identify] Empty response (attempt ${attempt}/2)`);
+      } catch (err) {
+        lastError = err;
+        console.warn(
+          `[API /stamps/identify] Attempt ${attempt}/2 failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
 
-    const text = response.text ?? '{}';
+    if (!text) {
+      throw lastError instanceof Error
+        ? lastError
+        : new Error('AI identification failed after retries');
+    }
 
     let parsed: Partial<StampIdentificationResult>;
     try {
