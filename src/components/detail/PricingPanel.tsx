@@ -1,9 +1,16 @@
 'use client';
 
 import React from 'react';
-import type { Stamp, PriceSource } from '@/types/stamp';
+import type { Stamp, PriceSource, PriceBasis } from '@/types/stamp';
 import ConfidenceMeter from '@/components/ui/ConfidenceMeter';
 import styles from './PricingPanel.module.css';
+
+const TIER_HEADING: Record<PriceBasis['tier'], string> = {
+  live_sold: 'Live Sold Price',
+  active: 'Current Asking Price',
+  last_sold: 'Last Known Sold',
+  catalog: 'Catalog Value',
+};
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
@@ -113,11 +120,20 @@ export default function PricingPanel({
     );
   }
 
+  const basis = pricing.priceBasis;
+
   return (
     <div className={styles.panel}>
       {/* Value Header */}
       <div className={styles.valueHeader}>
-        <p className={styles.valueLabel}>Estimated Value</p>
+        {basis && (
+          <span className={styles.basisBadge} data-tier={basis.tier}>
+            {basis.label}
+          </span>
+        )}
+        <p className={styles.valueLabel}>
+          {basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}
+        </p>
         <p className={styles.valueAmount}>
           {formatCurrency(pricing.estimatedValue)}
         </p>
@@ -130,6 +146,40 @@ export default function PricingPanel({
           label="Confidence"
           className={styles.panelConfidenceMeter}
         />
+
+        {/* Proof: the actual listing behind the headline value */}
+        {basis?.proof && (basis.proof.imageUrl || basis.proof.url) && (
+          <a
+            className={styles.proof}
+            href={basis.proof.url ?? undefined}
+            target={basis.proof.url ? '_blank' : undefined}
+            rel="noopener noreferrer"
+          >
+            {basis.proof.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className={styles.proofThumb}
+                src={basis.proof.imageUrl}
+                alt={basis.proof.title ?? 'Listing proof'}
+                loading="lazy"
+              />
+            )}
+            <span className={styles.proofBody}>
+              <span className={styles.proofLabel}>
+                {basis.tier === 'live_sold' || basis.tier === 'last_sold'
+                  ? 'Most recent sale'
+                  : basis.tier === 'active'
+                    ? 'Example listing'
+                    : 'Source'}
+                {basis.proof.price != null && ` · ${formatCurrency(basis.proof.price)}`}
+                {basis.proof.soldDate && ` · ${formatDate(basis.proof.soldDate)}`}
+              </span>
+              {basis.proof.url && (
+                <span className={styles.proofLink}>View listing →</span>
+              )}
+            </span>
+          </a>
+        )}
       </div>
 
       {/* Sources */}
@@ -152,9 +202,19 @@ export default function PricingPanel({
                 className={styles.source}
                 {...linkProps}
               >
-                <div className={styles.sourceIcon}>
-                  {PLATFORM_ICONS[source.platform] ?? '📊'}
-                </div>
+                {source.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className={styles.sourceThumb}
+                    src={source.imageUrl}
+                    alt={source.title || source.platform}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className={styles.sourceIcon}>
+                    {PLATFORM_ICONS[source.platform] ?? '📊'}
+                  </div>
+                )}
                 <div className={styles.sourceInfo}>
                   <div className={styles.sourceName}>
                     {source.platform.charAt(0).toUpperCase() +

@@ -173,7 +173,10 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
             {CONDITION_LABELS[identification.condition]}
           </span>
           {pricing && (
-            <span className={styles.value}>
+            <span
+              className={styles.value}
+              title={pricing.priceBasis?.label ?? undefined}
+            >
               {formatValue(pricing.estimatedValue)}
             </span>
           )}

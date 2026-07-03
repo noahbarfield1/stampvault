@@ -54,6 +54,34 @@ export interface PriceSource {
   soldDate: ISODateString | null;
   listingType: 'sold' | 'active' | 'estimate';
   fetchedAt: ISODateString;
+  /** Listing thumbnail image (visual confirmation). Null when unavailable. */
+  imageUrl?: string | null;
+}
+
+/* ─── Price Basis (provenance of the headline value) ─────────────────── */
+
+/**
+ * Which tier the displayed headline value came from, plus the single listing
+ * used as link + image proof. Populated by the live-pricing aggregator.
+ */
+export interface PriceBasis {
+  tier: 'live_sold' | 'active' | 'last_sold' | 'catalog';
+  /** Human-readable badge, e.g. "Live sold · median of 6 sales (Mar 2025)". */
+  label: string;
+  value: number;
+  currency: string;
+  /** ISO date of the proof sale/listing, if any. */
+  asOf: ISODateString | null;
+  /** How many listings backed the headline value. */
+  sampleSize: number;
+  proof: {
+    platform: string;
+    url: string | null;
+    imageUrl: string | null;
+    title: string | null;
+    price: number | null;
+    soldDate: ISODateString | null;
+  } | null;
 }
 
 /* ─── Price Data (aggregated result from engine) ─────────────────────── */
@@ -72,6 +100,8 @@ export interface PriceData {
     delcampe: { avg: number; count: number } | null;
     stampworld: { avg: number; count: number } | null;
   };
+  /** Provenance of the headline value (live pricing). Optional for back-compat. */
+  priceBasis?: PriceBasis;
 }
 
 /* ─── Price History Entry ────────────────────────────────────────────── */
