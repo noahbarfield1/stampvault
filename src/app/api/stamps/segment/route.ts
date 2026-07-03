@@ -175,10 +175,12 @@ export async function POST(req: NextRequest) {
         confidence: Math.max(0, Math.min(1, s.confidence!)),
       }))
       .filter((s) => {
-        // Reject impossibly small or impossibly large detections
+        // Reject impossibly small detections. Full-frame boxes (100x100) are
+        // valid: the prompt instructs a single detection covering the whole
+        // image when it shows one stamp rather than an album page.
         const width = s.boundingBox.x2 - s.boundingBox.x1;
         const height = s.boundingBox.y2 - s.boundingBox.y1;
-        return width >= 2 && height >= 2 && width <= 98 && height <= 98;
+        return width >= 2 && height >= 2 && width <= 100 && height <= 100;
       });
 
     return NextResponse.json({ stamps, count: stamps.length });
