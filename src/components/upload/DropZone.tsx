@@ -300,15 +300,17 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         </button>
       </div>
 
-      <div className={styles.secondaryRow}>
-        <button
-          className={styles.loadBtn}
-          onClick={loadTestStamps}
-          type="button"
-        >
-          🧪 Load 5 Test Stamps
-        </button>
-      </div>
+      {process.env.NODE_ENV !== 'production' && (
+        <div className={styles.secondaryRow}>
+          <button
+            className={styles.loadBtn}
+            onClick={loadTestStamps}
+            type="button"
+          >
+            🧪 Load 5 Test Stamps
+          </button>
+        </div>
+      )}
 
       {/* Previews */}
       {previews.length > 0 && (

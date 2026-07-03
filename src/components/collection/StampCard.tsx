@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { useStampsStore } from '@/store/stamps';
+import { useUIStore } from '@/store/ui';
 import type { Stamp, StampCondition } from '@/types/stamp';
 import styles from './StampCard.module.css';
 
@@ -42,13 +45,15 @@ const CONDITION_LABELS: Record<StampCondition, string> = {
 };
 
 function formatValue(value: number): string {
+  if (!value || value <= 0) return '—';
   if (value >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(1)}M`;
   }
   if (value >= 1_000) {
     return `$${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}K`;
   }
-  return `$${value.toFixed(0)}`;
+  // Sub-$100 stamps (incl. sub-dollar) keep cents so $0.15 doesn't render as "$0".
+  return `$${value.toFixed(value < 100 ? 2 : 0)}`;
 }
 
 /* ── Props ─────────────────────────────────────────────────────────────── */
@@ -59,6 +64,9 @@ interface StampCardProps {
 }
 
 export default function StampCard({ stamp, onClick }: StampCardProps) {
+  const router = useRouter();
+  const removeStamp = useStampsStore((s) => s.removeStamp);
+  const addToast = useUIStore((s) => s.addToast);
   const [hovered, setHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const { identification, pricing, isFavorite } = stamp;
@@ -100,7 +108,10 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
           </button>
           <button
             className={styles.quickAction}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push('/collection/' + stamp.id);
+            }}
             title="Edit stamp"
             type="button"
           >
@@ -108,7 +119,19 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
           </button>
           <button
             className={`${styles.quickAction} ${styles.quickActionDelete}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              const confirmed = window.confirm(
+                `Remove "${identification.description}" from your collection? This cannot be undone.`
+              );
+              if (!confirmed) return;
+              removeStamp(stamp.id);
+              addToast({
+                type: 'success',
+                title: 'Stamp removed',
+                message: `${identification.description} was removed from your collection.`,
+              });
+            }}
             title="Delete stamp"
             type="button"
           >

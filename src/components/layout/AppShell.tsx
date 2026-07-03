@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
 import ChatPanel from '@/components/chat/ChatPanel';
 import GuidedTour from '@/components/layout/GuidedTour';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -29,6 +30,7 @@ export function AppShell({ children }: AppShellProps) {
       <MobileNav />
       <ChatPanel />
       <GuidedTour />
+      <ToastContainer />
     </div>
   );
 }

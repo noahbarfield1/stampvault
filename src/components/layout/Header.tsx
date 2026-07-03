@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { useMemo, type FormEvent } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
+import { useStampsStore } from '@/store/stamps';
 import styles from './Header.module.css';
 
 const routeTitles: Record<string, string> = {
@@ -16,6 +17,7 @@ const routeTitles: Record<string, string> = {
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const globalSearchQuery = useUIStore((s) => s.globalSearchQuery);
   const setGlobalSearchQuery = useUIStore((s) => s.setGlobalSearchQuery);
@@ -43,6 +45,16 @@ export function Header() {
     }
   };
 
+  const runSearch = () => {
+    useStampsStore.getState().setFilters({ search: globalSearchQuery.trim() });
+    router.push('/collection');
+  };
+
+  const handleSearchSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    runSearch();
+  };
+
   return (
     <header
       className={`${styles.header} ${collapsed ? styles.headerCollapsed : ''}`}
@@ -54,7 +66,7 @@ export function Header() {
 
       {/* Center: Search */}
       <div className={styles.searchSection}>
-        <div className={styles.searchWrapper}>
+        <form className={styles.searchWrapper} onSubmit={handleSearchSubmit}>
           <svg
             className={styles.searchIcon}
             viewBox="0 0 24 24"
@@ -73,13 +85,19 @@ export function Header() {
             placeholder="Search stamps, collections, prices..."
             value={globalSearchQuery}
             onChange={(e) => setGlobalSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                runSearch();
+              }
+            }}
             aria-label="Global search"
           />
           <div className={styles.searchShortcut}>
             <span className={styles.kbd}>⌘</span>
             <span className={styles.kbd}>K</span>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Right: Actions */}

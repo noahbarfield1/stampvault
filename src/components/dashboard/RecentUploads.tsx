@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import type { Stamp } from '@/types/stamp';
 import styles from './RecentUploads.module.css';
@@ -38,6 +39,7 @@ function formatDate(isoDate: string): string {
 }
 
 export default function RecentUploads({ stamps }: RecentUploadsProps) {
+  const router = useRouter();
   const sorted = [...stamps]
     .sort(
       (a, b) =>
@@ -67,7 +69,11 @@ export default function RecentUploads({ stamps }: RecentUploadsProps) {
             Latest additions to your collection
           </span>
         </div>
-        <button className={styles.viewAll} type="button">
+        <button
+          className={styles.viewAll}
+          type="button"
+          onClick={() => router.push('/collection')}
+        >
           View All
         </button>
       </div>

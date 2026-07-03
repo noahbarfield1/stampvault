@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, type Variants } from 'framer-motion';
 import { useUIStore } from '@/store/ui';
 import { useStampsStore } from '@/store/stamps';
@@ -162,6 +163,7 @@ function SkeletonGrid() {
 /* ─── Dashboard Page ─────────────────────────────────────────────────── */
 
 export default function DashboardPage() {
+  const router = useRouter();
   const storeStamps = useStampsStore((s) => s.stamps);
   const setStamps = useStampsStore((s) => s.setStamps);
   const setCollectionStats = useStampsStore((s) => s.setCollectionStats);
@@ -490,6 +492,7 @@ export default function DashboardPage() {
               icon={<StampIcon />}
               trend={{ value: 8.3, isPositive: true }}
               subtitle={`${stats.recentlyAdded} new · ${Math.round(avgConfidence * 100)}% AI`}
+              onClick={() => router.push('/collection')}
             />
             <StatCard
               title="Total Value"
@@ -497,12 +500,14 @@ export default function DashboardPage() {
               icon={<DollarIcon />}
               trend={{ value: stats.valueChange30d, isPositive: stats.valueChange30d >= 0 }}
               subtitle="USD estimated"
+              onClick={() => router.push('/prices')}
             />
             <StatCard
               title="Most Valuable"
               value={formatCurrency(stats.highestValue?.value ?? 0)}
               icon={<DiamondIcon />}
               subtitle={stats.highestValue?.title ?? '—'}
+              onClick={() => router.push('/prices')}
             />
             <StatCard
               title="Avg Value"
@@ -510,6 +515,7 @@ export default function DashboardPage() {
               icon={<ChartIcon />}
               trend={{ value: 1.8, isPositive: true }}
               subtitle="Per stamp"
+              onClick={() => router.push('/prices')}
             />
           </motion.div>
 

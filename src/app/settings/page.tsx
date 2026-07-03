@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GoldButton from '@/components/ui/GoldButton';
 import Modal from '@/components/ui/Modal';
 import styles from './settings.module.css';
+import { useStampsStore } from '@/store/stamps';
+import { useUIStore } from '@/store/ui';
+import type { Stamp } from '@/types/stamp';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -92,6 +95,11 @@ const SECTIONS: SectionConfig[] = [
 /* ─── Component ──────────────────────────────────────────────────────── */
 
 export default function SettingsPage() {
+  const stamps = useStampsStore((s) => s.stamps);
+  const setStamps = useStampsStore((s) => s.setStamps);
+  const addStamp = useStampsStore((s) => s.addStamp);
+  const addToast = useUIStore((s) => s.addToast);
+
   const [settings, setSettings] = useState<SettingsState>({
     vertexAiKey: '',
     perplexityKey: '',
@@ -141,49 +149,86 @@ export default function SettingsPage() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      /* In production, save to Firestore settings collection */
-      await new Promise((r) => setTimeout(r, 1000));
-      console.log('Settings saved:', settings);
+      localStorage.setItem('stampvault-settings', JSON.stringify(settings));
+      addToast({
+        type: 'success',
+        title: 'Settings saved',
+        message: 'Your settings have been saved to this browser.',
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [settings]);
+  }, [settings, addToast]);
+
+  /* ── CSV Field Escaping ────────────────────────────────────────────── */
+  const escapeCSVField = (value: unknown): string => {
+    const str = value === null || value === undefined ? '' : String(value);
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
 
   /* ── Export CSV ──────────────────────────────────────────────────────── */
   const handleExportCSV = useCallback(() => {
+    if (stamps.length === 0) {
+      addToast({
+        type: 'info',
+        title: 'Nothing to export',
+        message: 'Your collection is empty.',
+      });
+      return;
+    }
+
     const headers = [
-      'ID',
-      'Description',
-      'Country',
-      'Year',
-      'Scott Number',
-      'Condition',
-      'Rarity',
-      'Estimated Value',
-      'Currency',
-      'Tags',
-      'Notes',
-      'Created At',
+      'id',
+      'country',
+      'year',
+      'denomination',
+      'scottNumber',
+      'condition',
+      'rarity',
+      'estimatedValue',
+      'description',
     ];
-    const csvContent = [headers.join(','), ''].join('\n');
+    const rows = stamps.map((stamp) =>
+      [
+        stamp.id,
+        stamp.identification.country,
+        stamp.identification.year,
+        stamp.identification.denomination,
+        stamp.identification.scottNumber,
+        stamp.identification.condition,
+        stamp.identification.rarity,
+        stamp.pricing?.estimatedValue,
+        stamp.identification.description,
+      ]
+        .map(escapeCSVField)
+        .join(',')
+    );
+    const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `perduestampvault-collection-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = 'stampvault-collection.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+
+    addToast({
+      type: 'success',
+      title: 'Export complete',
+      message: `Exported ${stamps.length} stamp${stamps.length === 1 ? '' : 's'} to CSV.`,
+    });
+  }, [stamps, addToast]);
 
   /* ── Export JSON ─────────────────────────────────────────────────────── */
   const handleExportJSON = useCallback(() => {
     const data = {
-      exportDate: new Date().toISOString(),
-      version: '1.0.0',
-      stamps: [],
-      settings: settings,
+      exportedAt: new Date().toISOString(),
+      stamps,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: 'application/json',
@@ -191,12 +236,18 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `perduestampvault-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = 'stampvault-collection.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [settings]);
+
+    addToast({
+      type: 'success',
+      title: 'Export complete',
+      message: `Exported ${stamps.length} stamp${stamps.length === 1 ? '' : 's'} to JSON.`,
+    });
+  }, [stamps, addToast]);
 
   /* ── Import ──────────────────────────────────────────────────────────── */
   const handleImport = useCallback(() => {
@@ -205,25 +256,89 @@ export default function SettingsPage() {
     input.accept = '.json,.csv';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          console.log('Import file read:', file.name);
-          /* In production, parse and import stamps */
-        };
-        reader.readAsText(file);
-      }
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(reader.result as string);
+        } catch {
+          addToast({
+            type: 'error',
+            title: 'Import failed',
+            message: 'That file is not valid JSON.',
+          });
+          return;
+        }
+
+        let candidates: unknown[];
+        if (Array.isArray(parsed)) {
+          candidates = parsed;
+        } else if (
+          parsed &&
+          typeof parsed === 'object' &&
+          Array.isArray((parsed as { stamps?: unknown }).stamps)
+        ) {
+          candidates = (parsed as { stamps: unknown[] }).stamps;
+        } else {
+          addToast({
+            type: 'error',
+            title: 'Import failed',
+            message: 'Expected an array of stamps or an object with a "stamps" array.',
+          });
+          return;
+        }
+
+        let importedCount = 0;
+        candidates.forEach((entry) => {
+          if (
+            entry &&
+            typeof entry === 'object' &&
+            'id' in entry &&
+            (entry as { id?: unknown }).id
+          ) {
+            addStamp(entry as Stamp);
+            importedCount += 1;
+          }
+        });
+
+        if (importedCount === 0) {
+          addToast({
+            type: 'error',
+            title: 'Import failed',
+            message: 'No valid stamps were found in the selected file.',
+          });
+        } else {
+          addToast({
+            type: 'success',
+            title: 'Import complete',
+            message: `Imported ${importedCount} stamp${importedCount === 1 ? '' : 's'}.`,
+          });
+        }
+      };
+      reader.onerror = () => {
+        addToast({
+          type: 'error',
+          title: 'Import failed',
+          message: 'Could not read the selected file.',
+        });
+      };
+      reader.readAsText(file);
     };
     input.click();
-  }, []);
+  }, [addStamp, addToast]);
 
   /* ── Clear All Data ─────────────────────────────────────────────────── */
   const handleClearData = useCallback(async () => {
-    /* In production, clear Firestore collection */
-    await new Promise((r) => setTimeout(r, 500));
+    setStamps([]);
     setShowClearModal(false);
-    console.log('All data cleared');
-  }, []);
+    addToast({
+      type: 'success',
+      title: 'Collection cleared',
+      message: 'All stamps have been permanently deleted.',
+    });
+  }, [setStamps, addToast]);
 
   /* ── Render Section Body ────────────────────────────────────────────── */
   const renderSectionBody = (sectionId: string) => {

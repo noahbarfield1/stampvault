@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
+import type { StampCondition } from '@/types/stamp';
 import ZoomableImage from '@/components/detail/ZoomableImage';
 import MetadataAccordion from '@/components/detail/MetadataAccordion';
 import PricingPanel from '@/components/detail/PricingPanel';
@@ -21,7 +22,9 @@ interface StampDetailPageProps {
 export default function StampDetailPage({ params }: StampDetailPageProps) {
   const { id } = use(params);
   const openChat = useUIStore((s) => s.openChat);
+  const addToast = useUIStore((s) => s.addToast);
   const stamps = useStampsStore((s) => s.stamps);
+  const updateStamp = useStampsStore((s) => s.updateStamp);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const stamp = useMemo(
@@ -44,17 +47,183 @@ export default function StampDetailPage({ params }: StampDetailPageProps) {
 
   const handleFieldEdit = useCallback(
     (field: string, value: string) => {
-      console.log(`Edit field ${field} to: ${value}`);
+      if (!stamp) return;
+
+      switch (field) {
+        case 'country':
+          updateStamp(stamp.id, {
+            identification: { ...stamp.identification, country: value },
+          });
+          break;
+        case 'year': {
+          const parsed = parseInt(value, 10);
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              year: Number.isNaN(parsed) ? null : parsed,
+            },
+          });
+          break;
+        }
+        case 'denomination':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              denomination: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'scottNumber':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              scottNumber: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'michelNumber':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              michelNumber: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'description':
+          updateStamp(stamp.id, {
+            identification: { ...stamp.identification, description: value },
+          });
+          break;
+        case 'series':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              series: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'condition': {
+          const normalized = value.trim().toLowerCase().replace(/\s+/g, '_');
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              condition: normalized as StampCondition,
+            },
+          });
+          break;
+        }
+        case 'color':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              color: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'perforation':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              perforation: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'watermark':
+          updateStamp(stamp.id, {
+            identification: {
+              ...stamp.identification,
+              watermark: value.trim() === '' ? null : value,
+            },
+          });
+          break;
+        case 'grade': {
+          const parsed = parseFloat(value);
+          updateStamp(stamp.id, { grade: Number.isNaN(parsed) ? null : parsed });
+          break;
+        }
+        case 'tags': {
+          const tags = value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
+          updateStamp(stamp.id, { tags });
+          break;
+        }
+        case 'notes':
+          updateStamp(stamp.id, { notes: value });
+          break;
+        case 'purchasePrice': {
+          const parsed = parseFloat(value);
+          updateStamp(stamp.id, {
+            purchasePrice: Number.isNaN(parsed) ? null : parsed,
+          });
+          break;
+        }
+        case 'purchaseDate': {
+          if (value.trim() === '') {
+            updateStamp(stamp.id, { purchaseDate: null });
+            break;
+          }
+          const parsedDate = new Date(value);
+          updateStamp(stamp.id, {
+            purchaseDate: Number.isNaN(parsedDate.getTime())
+              ? null
+              : parsedDate.toISOString(),
+          });
+          break;
+        }
+        default:
+          return;
+      }
+
+      addToast({ type: 'success', title: 'Saved', duration: 2000 });
     },
-    []
+    [stamp, updateStamp, addToast]
   );
 
-  const handleRefreshPrices = useCallback(() => {
+  const handleRefreshPrices = useCallback(async () => {
+    if (!stamp) return;
+
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/pricing/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stampDescription: stamp.identification.description,
+          scottNumber: stamp.identification.scottNumber || undefined,
+          country: stamp.identification.country || undefined,
+          year: stamp.identification.year || undefined,
+          condition: stamp.identification.condition || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Price lookup failed with status ${res.status}`);
+      }
+
+      const { pricing } = await res.json();
+      if (pricing) {
+        updateStamp(stamp.id, { pricing });
+        addToast({ type: 'success', title: 'Prices refreshed' });
+      } else {
+        addToast({
+          type: 'error',
+          title: "Couldn't refresh prices",
+          message: 'No pricing data was returned.',
+        });
+      }
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: "Couldn't refresh prices",
+        message:
+          error instanceof Error ? error.message : 'Please try again later.',
+      });
+    } finally {
       setIsRefreshing(false);
-    }, 2000);
-  }, []);
+    }
+  }, [stamp, updateStamp, addToast]);
 
   const handleShare = useCallback(() => {
     if (navigator.share && stamp) {

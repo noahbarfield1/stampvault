@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import CollectionValueChart from '@/components/prices/CollectionValueChart';
 import PriceMoversTable from '@/components/prices/PriceMoversTable';
@@ -14,6 +15,7 @@ import styles from './prices.module.css';
 /* ─── Page Component ─────────────────────────────────────────────────── */
 
 export default function PricesPage() {
+  const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const storeStamps = useStampsStore((s) => s.stamps);
   
@@ -176,7 +178,7 @@ export default function PricesPage() {
   };
 
   const handleStampClick = (stampId: string) => {
-    console.log('Navigate to stamp:', stampId);
+    router.push('/collection/' + stampId);
   };
 
   return (
