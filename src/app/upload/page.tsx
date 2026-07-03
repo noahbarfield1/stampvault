@@ -312,6 +312,7 @@ export default function UploadPage() {
     useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
   const [uploadMode, setUploadMode] = useState<'batch' | 'sheet'>('sheet');
+  const [mockModeDetected, setMockModeDetected] = useState(false);
 
   /* Preview URL from first uploaded file */
   const previewUrl = useMemo(() => {
@@ -560,6 +561,12 @@ export default function UploadPage() {
         
         const identifyData = await identifyRes.json();
         const ident = identifyData.identification;
+
+        // Surface a warning if the AI ran in mock mode (missing/invalid API key),
+        // so users don't mistake simulated data for a real identification.
+        if (ident?._mockMode) {
+          setMockModeDetected(true);
+        }
 
         // 3. Send returned identification metadata to /api/pricing/lookup to fetch market pricing
         const pricingRes = await fetch('/api/pricing/lookup', {
@@ -817,6 +824,35 @@ export default function UploadPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Upload Stamps</h1>
+
+      {mockModeDetected && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: '0 auto 20px',
+            maxWidth: 720,
+            padding: '12px 16px',
+            borderRadius: 12,
+            background: 'rgba(251, 191, 36, 0.08)',
+            border: '1px solid rgba(251, 191, 36, 0.35)',
+            color: '#fbbf24',
+            fontSize: 13,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span>
+            <strong>Simulated results.</strong> The AI identification key isn&apos;t configured, so these
+            identifications are sample data — not real analysis. Add a Google/Gemini API key in Settings to enable live identification.
+          </span>
+        </div>
+      )}
 
       {/* Step Indicator */}
       <div className={styles.steps}>

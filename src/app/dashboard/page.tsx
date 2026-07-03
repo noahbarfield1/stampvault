@@ -490,7 +490,6 @@ export default function DashboardPage() {
               title="Total Stamps"
               value={stats.totalStamps.toLocaleString()}
               icon={<StampIcon />}
-              trend={{ value: 8.3, isPositive: true }}
               subtitle={`${stats.recentlyAdded} new · ${Math.round(avgConfidence * 100)}% AI`}
               onClick={() => router.push('/collection')}
             />
@@ -513,7 +512,7 @@ export default function DashboardPage() {
               title="Avg Value"
               value={formatCurrency(stats.averageValue)}
               icon={<ChartIcon />}
-              trend={{ value: 1.8, isPositive: true }}
+              trend={{ value: stats.valueChange30d, isPositive: stats.valueChange30d >= 0 }}
               subtitle="Per stamp"
               onClick={() => router.push('/prices')}
             />

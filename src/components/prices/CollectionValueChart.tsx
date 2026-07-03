@@ -108,13 +108,13 @@ export default function CollectionValueChart({
       case 'average':
         return filteredData.map((d) => ({
           ...d,
-          value: d.avgValue ?? d.value * 0.15,
+          value: d.avgValue ?? d.value,
         }));
       case 'top10':
-        return filteredData.map((d) => ({
-          ...d,
-          value: d.value * 0.6,
-        }));
+        // Only a total-value series is available here; for collections of ≤10
+        // stamps the top 10 IS the whole collection, so show the real total
+        // rather than a fabricated fraction.
+        return filteredData;
       default:
         return filteredData;
     }
