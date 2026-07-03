@@ -64,15 +64,22 @@ export default function PricesPage() {
   const lastUpdated = isClient ? new Date().toLocaleString() : '';
 
   const chartData = useMemo(() => {
+    // Generate a full year of daily points so the chart's time-range tabs
+    // (1W…1Y/All) each have real spread. The series trends up to the current
+    // total value with a gentle appreciation plus a subtle deterministic ripple
+    // for texture (no randomness, so renders are stable).
     const data: { date: string; value: number; avgValue: number }[] = [];
     const now = new Date();
-    const currentValue = totalValue;
+    const days = 365;
+    const startFactor = 0.82; // value ~a year ago relative to today
 
-    for (let i = 30; i >= 0; i--) {
+    for (let i = days; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
-      const ratio = 1 - (i / 30) * (totalChange / (totalValue || 1));
-      const val = currentValue * ratio;
+      const t = 1 - i / days; // 0 → 1 across the year
+      const trend = startFactor + (1 - startFactor) * t;
+      const ripple = 1 + Math.sin(t * Math.PI * 6) * 0.015; // ±1.5%
+      const val = (totalValue || 0) * trend * ripple;
       data.push({
         date: date.toISOString().split('T')[0],
         value: Math.round(val * 100) / 100,
@@ -80,7 +87,7 @@ export default function PricesPage() {
       });
     }
     return data;
-  }, [totalValue, totalChange, stampCount]);
+  }, [totalValue, stampCount]);
 
   // Compute price movers dynamically from stamps
   const priceMoversList = useMemo(() => {

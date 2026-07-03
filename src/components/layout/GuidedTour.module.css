@@ -8,7 +8,9 @@
 }
 
 .tourCard {
-  background: var(--color-glass-active);
+  /* Near-opaque so it reads as a floating panel instead of colliding with the
+     chart/content behind it. */
+  background: rgba(18, 16, 14, 0.97);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid #d4a574;
