@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GoldButton from '@/components/ui/GoldButton';
 import Modal from '@/components/ui/Modal';
@@ -12,14 +12,16 @@ import type { Stamp } from '@/types/stamp';
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
 interface SettingsState {
-  vertexAiKey: string;
-  perplexityKey: string;
-  hipstampKey: string;
-  ebayKey: string;
   refreshFrequency: string;
   cacheDuration: string;
   voiceEnabled: boolean;
   ttsVoice: string;
+}
+
+interface ServiceStatus {
+  vertexAi: boolean;
+  perplexity: boolean;
+  firecrawl: boolean;
 }
 
 interface SectionConfig {
@@ -34,8 +36,8 @@ interface SectionConfig {
 const SECTIONS: SectionConfig[] = [
   {
     id: 'api',
-    title: 'API Configuration',
-    description: 'Manage your API keys for AI and pricing services',
+    title: 'Service Status',
+    description: 'Which AI and pricing services are configured on the server',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
@@ -101,21 +103,40 @@ export default function SettingsPage() {
   const addToast = useUIStore((s) => s.addToast);
 
   const [settings, setSettings] = useState<SettingsState>({
-    vertexAiKey: '',
-    perplexityKey: '',
-    hipstampKey: '',
-    ebayKey: '',
     refreshFrequency: '24h',
     cacheDuration: '7d',
     voiceEnabled: true,
     ttsVoice: 'default',
   });
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
 
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(['api', 'pricing', 'voice', 'data', 'about'])
   );
   const [isSaving, setIsSaving] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/settings/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setServiceStatus(data))
+      .catch(() => {});
+  }, []);
+
+  // handleSave writes to localStorage, but nothing ever read it back — every
+  // saved setting (refresh frequency, cache duration, voice toggle, any API
+  // keys typed in) silently reset to these defaults on next load. Restore on
+  // mount instead of in the initial useState so this stays SSR-safe.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('stampvault-settings');
+      if (raw) {
+        setSettings((prev) => ({ ...prev, ...JSON.parse(raw) }));
+      }
+    } catch {
+      // ignore malformed/unavailable storage
+    }
+  }, []);
 
   /* ── Toggle Section ─────────────────────────────────────────────────── */
   const toggleSection = useCallback((id: string) => {
@@ -137,13 +158,6 @@ export default function SettingsPage() {
     },
     []
   );
-
-  /* ── Mask API Key ───────────────────────────────────────────────────── */
-  const maskKey = (key: string): string => {
-    if (!key) return '';
-    if (key.length <= 8) return '•'.repeat(key.length);
-    return key.slice(0, 4) + '•'.repeat(key.length - 8) + key.slice(-4);
-  };
 
   /* ── Save Settings ──────────────────────────────────────────────────── */
   const handleSave = useCallback(async () => {
@@ -346,85 +360,47 @@ export default function SettingsPage() {
       case 'api':
         return (
           <div className={styles.sectionBody}>
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="vertexAiKey">
-                Vertex AI API Key
-              </label>
-              <input
-                id="vertexAiKey"
-                type="password"
-                className={styles.fieldInput}
-                value={settings.vertexAiKey}
-                onChange={(e) => updateSetting('vertexAiKey', e.target.value)}
-                placeholder="Enter your Vertex AI API key…"
-                autoComplete="off"
-              />
-              <span className={styles.fieldHint}>
-                {settings.vertexAiKey
-                  ? `Key: ${maskKey(settings.vertexAiKey)}`
-                  : 'Required for stamp identification and AI chat'}
-              </span>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="perplexityKey">
-                Perplexity API Key
-              </label>
-              <input
-                id="perplexityKey"
-                type="password"
-                className={styles.fieldInput}
-                value={settings.perplexityKey}
-                onChange={(e) => updateSetting('perplexityKey', e.target.value)}
-                placeholder="Enter your Perplexity API key…"
-                autoComplete="off"
-              />
-              <span className={styles.fieldHint}>
-                {settings.perplexityKey
-                  ? `Key: ${maskKey(settings.perplexityKey)}`
-                  : 'Used for market research and price estimation'}
-              </span>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="hipstampKey">
-                HipStamp API Key
-              </label>
-              <input
-                id="hipstampKey"
-                type="password"
-                className={styles.fieldInput}
-                value={settings.hipstampKey}
-                onChange={(e) => updateSetting('hipstampKey', e.target.value)}
-                placeholder="Enter your HipStamp API key…"
-                autoComplete="off"
-              />
-              <span className={styles.fieldHint}>
-                {settings.hipstampKey
-                  ? `Key: ${maskKey(settings.hipstampKey)}`
-                  : 'For HipStamp marketplace pricing data'}
-              </span>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="ebayKey">
-                eBay API Key
-              </label>
-              <input
-                id="ebayKey"
-                type="password"
-                className={styles.fieldInput}
-                value={settings.ebayKey}
-                onChange={(e) => updateSetting('ebayKey', e.target.value)}
-                placeholder="Enter your eBay API key…"
-                autoComplete="off"
-              />
-              <span className={styles.fieldHint}>
-                {settings.ebayKey
-                  ? `Key: ${maskKey(settings.ebayKey)}`
-                  : 'For eBay sold listings price comparison'}
-              </span>
-            </div>
+            <p className={styles.fieldHint} style={{ marginBottom: 'var(--space-2)' }}>
+              These are configured server-side and can&apos;t be changed from the
+              browser. This just shows what&apos;s actually active.
+            </p>
+            {[
+              {
+                key: 'vertexAi' as const,
+                label: 'Vertex AI (Gemini)',
+                hint: 'Stamp identification, segmentation, and AI chat',
+              },
+              {
+                key: 'perplexity' as const,
+                label: 'Perplexity',
+                hint: 'Market research and deep-research queries',
+              },
+              {
+                key: 'firecrawl' as const,
+                label: 'Firecrawl',
+                hint: 'Live marketplace price scraping',
+              },
+            ].map(({ key, label, hint }) => {
+              const active = serviceStatus?.[key];
+              return (
+                <div key={key} className={styles.toggleRow}>
+                  <div className={styles.toggleInfo}>
+                    <span className={styles.toggleLabel}>{label}</span>
+                    <span className={styles.toggleDescription}>{hint}</span>
+                  </div>
+                  <span
+                    style={{
+                      color: active ? 'var(--color-success, #2ecc71)' : 'var(--color-text-tertiary)',
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {serviceStatus === null ? '…' : active ? '✓ Configured' : '✕ Not configured'}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         );
 
@@ -714,7 +690,7 @@ export default function SettingsPage() {
       >
         <h1 className={styles.pageTitle}>Settings</h1>
         <p className={styles.subtitle}>
-          Configure API keys, pricing, voice controls, and data management
+          Service status, pricing, voice controls, and data management
         </p>
       </motion.div>
 

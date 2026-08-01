@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.83",
+    "@ai-sdk/google-vertex": "^3.0.83",
     "@google/genai": "^2.9.0",
     "ai": "^6.0.208",
     "firebase": "^12.15.0",

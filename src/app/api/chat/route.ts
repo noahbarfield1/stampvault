@@ -8,7 +8,8 @@
 
 import { NextRequest } from 'next/server';
 import { streamText, type ModelMessage } from 'ai';
-import { google } from '@ai-sdk/google';
+import { createVertex } from '@ai-sdk/google-vertex';
+import { VERTEX_PROJECT, VERTEX_LOCATION, getVertexAuthOptions } from '@/lib/ai/vertex';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
@@ -128,23 +129,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const googleKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!googleKey || googleKey === 'your-google-api-key') {
-      return new Response(
-        JSON.stringify({ error: 'Google AI API key is not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     const systemPrompt = buildSystemPrompt(body.context);
+    const authOptions = getVertexAuthOptions();
+    const vertex = createVertex({
+      project: VERTEX_PROJECT,
+      location: VERTEX_LOCATION,
+      ...(authOptions ? { googleAuthOptions: authOptions } : {}),
+    });
 
     const result = streamText({
-      model: google('gemini-3.5-flash'),
+      model: vertex('gemini-2.5-flash'),
       system: systemPrompt,
       messages: body.messages,
       temperature: 0.7,
       topP: 0.9,
       maxOutputTokens: 4096,
+      onError: ({ error }) => {
+        console.error('[API /chat] Stream error:', error);
+      },
     });
 
     return result.toTextStreamResponse();

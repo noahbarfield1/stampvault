@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
+import { VERTEX_PROJECT, VERTEX_LOCATION, getVertexAuthOptions } from '@/lib/ai/vertex';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -422,16 +423,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ identification: mockResult });
     }
 
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-
-    let genAI: GoogleGenAI;
-    if (apiKey && apiKey !== 'your-google-api-key') {
-      genAI = new GoogleGenAI({ apiKey });
-    } else {
-      console.warn('[API /stamps/identify] Missing AI credentials. Using rotating mock.');
-      const mockResult = generateRotatingMock(body.imageBase64);
-      return NextResponse.json({ identification: mockResult });
-    }
+    const identifyAuthOptions = getVertexAuthOptions();
+    const genAI = new GoogleGenAI({
+      vertexai: true,
+      project: VERTEX_PROJECT,
+      location: VERTEX_LOCATION,
+      ...(identifyAuthOptions ? { googleAuthOptions: identifyAuthOptions } : {}),
+    });
 
     // INJECT DATABASE CONTEXT
     const dbContext = "VERIFIED_STAMPS DATABASE:\n" + JSON.stringify(
@@ -449,8 +447,9 @@ export async function POST(req: NextRequest) {
       })), null, 2
     );
 
-    // gemini-3.1-pro-preview runs in mandatory "thinking" mode; left uncapped it
-    // burns 2000-2700 thinking tokens per call, pushing latency to ~20-25s and
+    // gemini-2.5-pro (the 3.x family isn't available via Vertex AI on this
+    // project) runs in mandatory "thinking" mode; left uncapped it burns
+    // 2000-2700 thinking tokens per call, pushing latency to ~20-25s and
     // intermittently returning empty/truncated text — which previously fell
     // through to a fabricated "Unknown" result at 0.5 confidence. Cap thinking to
     // keep calls fast and deterministic, bound each attempt with a timeout (well
@@ -461,7 +460,7 @@ export async function POST(req: NextRequest) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await genAI.models.generateContent({
-          model: 'gemini-3.1-pro-preview',
+          model: 'gemini-2.5-pro',
           contents: [
             {
               role: 'user',
@@ -481,7 +480,11 @@ export async function POST(req: NextRequest) {
             temperature: 0.2,
             thinkingConfig: { thinkingBudget: 512 },
             maxOutputTokens: 2048,
-            abortSignal: AbortSignal.timeout(22_000),
+            // 22s was tuned against small, pre-cropped test images; real
+            // (larger, uncropped) photos routinely exceeded it and got
+            // AbortError'd on both attempts. 27s x 2 attempts = 54s, still
+            // under this route's 60s maxDuration.
+            abortSignal: AbortSignal.timeout(27_000),
           },
         });
         if (response.text && response.text.trim()) {

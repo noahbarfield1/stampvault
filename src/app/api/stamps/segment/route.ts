@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
-import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
+import { VERTEX_PROJECT, VERTEX_LOCATION, getVertexAuthOptions } from '@/lib/ai/vertex';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -54,31 +54,6 @@ interface RawDetectedStamp {
   confidence?: number;
 }
 
-/**
- * Generate rotating mock segmentation instead of always returning Inverted Jenny.
- */
-function generateRotatingMockSegmentation(imageBase64: string) {
-  let hash = 0;
-  const sample = imageBase64.slice(0, 200);
-  for (let i = 0; i < sample.length; i++) {
-    hash = ((hash << 5) - hash + sample.charCodeAt(i)) | 0;
-  }
-  const idx = Math.abs(hash) % VERIFIED_STAMPS.length;
-  const stamp = VERIFIED_STAMPS[idx];
-
-  return {
-    stamps: [
-      {
-        boundingBox: { x1: 5, y1: 5, x2: 95, y2: 95 },
-        description: stamp.description,
-        confidence: 0.85,
-      },
-    ],
-    count: 1,
-    _mockMode: true,
-  };
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SegmentRequestBody;
@@ -90,15 +65,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-
-    let ai: GoogleGenAI;
-    if (apiKey && apiKey !== 'your-google-api-key') {
-      ai = new GoogleGenAI({ apiKey });
-    } else {
-      console.warn('[API /stamps/segment] Missing AI credentials. Using rotating mock.');
-      return NextResponse.json(generateRotatingMockSegmentation(body.imageBase64));
-    }
+    const segmentAuthOptions = getVertexAuthOptions();
+    const ai = new GoogleGenAI({
+      vertexai: true,
+      project: VERTEX_PROJECT,
+      location: VERTEX_LOCATION,
+      ...(segmentAuthOptions ? { googleAuthOptions: segmentAuthOptions } : {}),
+    });
 
     // Strip data URL prefix if present
     const cleanBase64 = body.imageBase64.replace(
@@ -108,7 +81,7 @@ export async function POST(req: NextRequest) {
     const mime = body.mimeType || 'image/jpeg';
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.5-flash',
       contents: [
         {
           role: 'user',
