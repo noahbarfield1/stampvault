@@ -81,3 +81,37 @@ npx eslint src tests
 There is no browser test harness yet. `docs/verification/` holds the surviving
 evidence from the old hand-rolled runner, including the 2026-07-03
 identification failure that was never re-verified.
+
+## Cloud sync
+
+Optional and off until the owner signs in. The app is fully usable without it.
+
+- **Auth**: Firebase Auth, Google only. Popup on desktop, redirect on touch
+  (mobile Safari blocks popups). `src/lib/firebase/auth.ts`.
+- **Shape**: `users/{uid}/stamps/{id}` holds metadata + a ~20KB thumbnail;
+  `users/{uid}/stamps/{id}/media/full` holds the full crop. Splitting them keeps
+  listing the collection cheap on cellular and against the free tier's read
+  budget — the detail page fetches the full image lazily.
+- **Not Firebase Storage.** Storage needs the Blaze plan to provision a bucket
+  and this project is on Spark with no bucket, so images live in Firestore
+  documents (1 MiB cap; a 1024px crop is 80-200KB). If the project is ever
+  upgraded, moving `media/full` to Storage is an isolated change to
+  `src/lib/sync/collection-sync.ts`.
+- **Model**: offline-first. localStorage stays the immediate source of truth so
+  the UI never waits on the network; Firestore is the durable mirror. Conflicts
+  resolve last-write-wins on `updatedAt`.
+- **Deletes are asymmetric on purpose.** The merge treats "missing on one side"
+  as not-yet-synced, never as a delete. Only an explicit `removeStamp` deletes
+  remotely. Silently wiping a collection because a device had stale state would
+  be unforgivable.
+- **Rules**: `firestore.rules` is scoped to `request.auth.uid` with a
+  default-deny catch-all. It previously shipped as
+  `allow read, write: if true` — the entire database was world-readable and
+  world-writable to anyone who knew the project id.
+
+### One-time console setup
+
+Authentication has never been enabled on `perduestampvault-db`. Until it is,
+sign-in fails with `auth/configuration-not-found` and the Settings panel shows
+the exact steps. Firebase console → Build → Authentication → Get started →
+enable Google → set a support email → check Authorized domains.

@@ -80,6 +80,7 @@
 }
 
 .tips {
+  list-style: disc outside;
   margin: var(--space-1) 0 0;
   padding-left: var(--space-4);
   display: flex;

@@ -9,6 +9,7 @@ import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
 import type { Stamp } from '@/types/stamp';
 import { usePageChrome } from '@/hooks/usePageChrome';
+import CloudSyncPanel from '@/components/settings/CloudSyncPanel';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -34,6 +35,16 @@ interface SectionConfig {
 /* ─── Section Definitions ────────────────────────────────────────────── */
 
 const SECTIONS: SectionConfig[] = [
+  {
+    id: 'sync',
+    title: 'Cloud Sync',
+    description: 'Back up your collection and use it on more than one device',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
+      </svg>
+    ),
+  },
   {
     id: 'api',
     title: 'Service Status',
@@ -358,6 +369,12 @@ export default function SettingsPage() {
   /* ── Render Section Body ────────────────────────────────────────────── */
   const renderSectionBody = (sectionId: string) => {
     switch (sectionId) {
+      case 'sync':
+        return (
+          <div className={styles.sectionBody}>
+            <CloudSyncPanel />
+          </div>
+        );
       case 'api':
         return (
           <div className={styles.sectionBody}>

@@ -235,6 +235,31 @@ function filterAndSortStamps(
   return result;
 }
 
+
+/* ── Cloud mirroring ──────────────────────────────────────────────────────
+ *  Imported lazily so the Firebase SDK stays out of the initial bundle and
+ *  so the sync store can import types from here without a cycle. Both are
+ *  no-ops when sync is unconfigured or signed out.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+async function mirrorUp(stamp: Stamp): Promise<void> {
+  try {
+    const { useSyncStore } = await import('./sync');
+    await useSyncStore.getState().pushOne(stamp);
+  } catch {
+    /* sync is optional; never let it break a local write */
+  }
+}
+
+async function mirrorDelete(stampId: string): Promise<void> {
+  try {
+    const { useSyncStore } = await import('./sync');
+    await useSyncStore.getState().removeOne(stampId);
+  } catch {
+    /* as above */
+  }
+}
+
 export const useStampsStore = create<StampsState>()(
   devtools(
     persist(
@@ -354,6 +379,10 @@ export const useStampsStore = create<StampsState>()(
       const newStamps = exists
         ? state.stamps.map((s) => (s.id === stamp.id ? stamp : s))
         : [stamp, ...state.stamps];
+      // Mirror to the cloud when signed in. Fire-and-forget on purpose: the
+      // stamp is already saved locally, so a network failure must not block
+      // or fail the save. Failures queue for the next full sync.
+      void mirrorUp(stamp);
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(
@@ -365,9 +394,15 @@ export const useStampsStore = create<StampsState>()(
     }),
   updateStamp: (id, updates) =>
     set((state) => {
+      // Always advance updatedAt: it is what sync uses to decide which copy
+      // wins, so an edit that does not move it can be silently reverted by a
+      // stale copy on another device.
+      const stamped = { ...updates, updatedAt: new Date().toISOString() };
       const newStamps = state.stamps.map((s) =>
-        s.id === id ? { ...s, ...updates } : s
+        s.id === id ? { ...s, ...stamped } : s
       );
+      const changed = newStamps.find((s) => s.id === id);
+      if (changed) void mirrorUp(changed);
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(
@@ -380,6 +415,10 @@ export const useStampsStore = create<StampsState>()(
   removeStamp: (id) =>
     set((state) => {
       const newStamps = state.stamps.filter((s) => s.id !== id);
+      // A delete is explicit, so propagate it. Sync's merge deliberately does
+      // NOT treat 'missing on one side' as a delete, so this is the only way a
+      // stamp leaves the cloud.
+      void mirrorDelete(id);
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(

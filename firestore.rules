@@ -1,8 +1,55 @@
 rules_version = '2';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// StampVault Firestore rules.
+//
+// These replace `allow read, write: if true`, which left the entire database
+// readable AND writable by anyone on the internet who knew the project id.
+//
+// Model: every stamp lives under its owner, at
+//   users/{uid}/stamps/{stampId}
+// with the full-resolution crop hanging off it at
+//   users/{uid}/stamps/{stampId}/media/full
+//
+// The full crop is a separate document on purpose: listing the collection then
+// reads only the small stamp docs (metadata plus a ~20KB thumbnail) rather than
+// pulling every full-size image — which matters both on a phone and against the
+// free tier's daily read budget.
+// ──────────────────────────────────────────────────────────────────────────────
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Firestore rejects documents over 1 MiB outright, but a stamp doc should
+    // never come close: metadata plus a 240px thumbnail is tens of KB. Cap it
+    // well below the hard limit so a bug cannot quietly bloat the collection.
+    function withinStampSize() {
+      return request.resource.size() < 400 * 1024;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /stamps/{stampId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && withinStampSize();
+
+        // The full-resolution crop, fetched lazily by the detail page.
+        match /media/{mediaId} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid)
+                                && request.resource.size() < 900 * 1024;
+        }
+      }
+    }
+
+    // Everything not matched above is denied. Default-deny is the point.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

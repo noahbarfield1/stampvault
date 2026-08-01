@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useUIStore } from '@/store/ui';
+import { useSyncStore } from '@/store/sync';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
@@ -16,6 +18,13 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
+  const initSync = useSyncStore((s) => s.init);
+
+  // Watch Firebase auth for the lifetime of the app, so a signed-in session is
+  // picked up on load (including after the mobile redirect sign-in flow returns)
+  // rather than only when Settings happens to be open. No-ops when sync is
+  // unconfigured.
+  useEffect(() => initSync(), [initSync]);
 
   return (
     <div className={styles.shell}>

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
 import { useStampsStore } from '@/store/stamps';
+import { useSyncStore } from '@/store/sync';
 import styles from './MoreSheet.module.css';
 
 interface Entry {
@@ -31,6 +32,8 @@ export default function MoreSheet() {
   const resetHints = useUIStore((s) => s.resetHints);
   const addToast = useUIStore((s) => s.addToast);
   const stamps = useStampsStore((s) => s.stamps);
+  const syncStatus = useSyncStore((s) => s.status);
+  const syncUser = useSyncStore((s) => s.user);
   const pathname = usePathname();
   const router = useRouter();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -85,7 +88,19 @@ export default function MoreSheet() {
 
   const navigation: Entry[] = [
     { href: '/assistant', icon: '✧', label: 'AI Assistant', sub: 'Ask about a stamp' },
-    { href: '/settings', icon: '⚙', label: 'Settings', sub: 'Services and preferences' },
+    {
+      href: '/settings',
+      icon: '⚙',
+      label: 'Settings',
+      // Surface sync state here rather than burying it: whether the collection
+      // is backed up is the single most consequential thing in Settings.
+      sub:
+        syncStatus === 'unconfigured'
+          ? 'Cloud sync not configured'
+          : syncUser
+            ? `Synced to ${syncUser.email ?? 'your account'}`
+            : 'Cloud sync off — this device only',
+    },
   ];
 
   const help: Entry[] = [
