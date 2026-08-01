@@ -21,7 +21,7 @@ export default function EditStampModal({ isOpen, onClose, stamp, onSave }: EditS
     if (stamp?.identification) {
       setFormData(stamp.identification);
     }
-    if (stamp?.pricing?.estimatedValue) {
+    if (stamp?.pricing?.estimatedValue != null) {
       setPriceOverride(stamp.pricing.estimatedValue.toString());
     }
   }, [stamp]);
@@ -109,10 +109,14 @@ export default function EditStampModal({ isOpen, onClose, stamp, onSave }: EditS
               <label>Condition</label>
               <select name="condition" value={formData.condition || ''} onChange={handleChange} className={styles.input}>
                 <option value="mint">Mint</option>
+                <option value="mint_nh">Mint (Never Hinged)</option>
+                <option value="unused">Unused</option>
                 <option value="used">Used</option>
                 <option value="fine">Fine</option>
                 <option value="very_fine">Very Fine</option>
                 <option value="superb">Superb</option>
+                <option value="poor">Poor</option>
+                <option value="unknown">Unknown</option>
               </select>
             </div>
             <div className={styles.fieldGroup}>
@@ -126,7 +130,7 @@ export default function EditStampModal({ isOpen, onClose, stamp, onSave }: EditS
               />
             </div>
             <p className={styles.hint}>
-              Warning: Modifying the Scott Number will re-evaluate verified pricing sources upon save.
+              Changes are saved to this stamp only — pricing sources are not re-fetched.
             </p>
           </div>
           

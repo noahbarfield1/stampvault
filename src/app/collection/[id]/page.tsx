@@ -195,6 +195,7 @@ export default function StampDetailPage({ params }: StampDetailPageProps) {
           country: stamp.identification.country || undefined,
           year: stamp.identification.year || undefined,
           condition: stamp.identification.condition || undefined,
+          forceRefresh: true,
         }),
       });
 

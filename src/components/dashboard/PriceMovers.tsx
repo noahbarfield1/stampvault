@@ -17,7 +17,7 @@ interface PriceMoversProps {
 function formatPrice(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${val.toFixed(0)}`;
+  return `$${val.toFixed(2)}`;
 }
 
 export default function PriceMovers({ movers }: PriceMoversProps) {

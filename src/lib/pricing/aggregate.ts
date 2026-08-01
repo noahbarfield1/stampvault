@@ -143,7 +143,13 @@ interface BreakdownStats {
   max: number;
 }
 
-/** Per-platform {avg, count, min, max} over a set of sources. Null if none. */
+/**
+ * Per-platform {avg, count, min, max} over a set of sources. Null if none.
+ * `count`/`min`/`max` reflect every listing found (so the user can see the
+ * full spread, including a bulk-lot outlier); `avg` is computed only over
+ * the IQR-filtered prices so one $79,950 "block of 6" listing can't drag a
+ * common $10 stamp's reported average up by two orders of magnitude.
+ */
 function computeBreakdown(
   sources: PriceSource[],
   platform: PriceSourcePlatform
@@ -155,10 +161,12 @@ function computeBreakdown(
 
   if (prices.length === 0) return null;
 
-  const sum = prices.reduce((acc, p) => acc + p, 0);
+  const filtered = removeOutliersIQR(prices);
+  const avgSource = filtered.length > 0 ? filtered : prices;
+  const sum = avgSource.reduce((acc, p) => acc + p, 0);
 
   return {
-    avg: round2(sum / prices.length),
+    avg: round2(sum / avgSource.length),
     count: prices.length,
     min: round2(Math.min(...prices)),
     max: round2(Math.max(...prices)),

@@ -30,6 +30,7 @@ export default function UploadSummary({
   onDeleteStamp,
 }: UploadSummaryProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [brokenRefImages, setBrokenRefImages] = useState<Set<number>>(new Set());
 
   const totalValue = stamps.reduce(
     (sum, s) => sum + (s.pricing?.estimatedValue ?? 0),
@@ -86,7 +87,7 @@ export default function UploadSummary({
               </div>
               <div className={styles.imageColumn}>
                 <span className={styles.imageBadge}>Catalog Reference</span>
-                {stamp.identification?.referenceImageUrl ? (
+                {stamp.identification?.referenceImageUrl && !brokenRefImages.has(index) ? (
                   <a
                     href={`https://www.hipstamp.com/search?q=${encodeURIComponent((stamp.identification.country || '') + ' ' + (stamp.identification.scottNumber || ''))}`}
                     target="_blank"
@@ -98,6 +99,9 @@ export default function UploadSummary({
                       className={styles.comparisonImage}
                       src={stamp.identification.referenceImageUrl || undefined}
                       alt="Catalog reference"
+                      onError={() =>
+                        setBrokenRefImages((prev) => new Set(prev).add(index))
+                      }
                     />
                   </a>
                 ) : (

@@ -27,16 +27,23 @@ interface LookupRequestBody {
   country?: string;
   year?: number;
   condition?: string;
+  /** Client's Settings > Price Settings > Cache Duration, in ms. Falls back
+   * to DEFAULT_CACHE_TTL_MS for callers that don't send it. */
+  cacheDurationMs?: number;
+  /** Set by the "Refresh Prices" button to bypass the cache entirely —
+   * otherwise a manual refresh could silently return the same cached
+   * result it was meant to replace. */
+  forceRefresh?: boolean;
 }
 
-/* ─── In-process 24h cache keyed by the normalized query ─────────────── */
+/* ─── In-process cache keyed by the normalized query ──────────────────── */
 
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const priceCache = new Map<string, { at: number; data: PriceData }>();
 
-function getCached(key: string): PriceData | null {
+function getCached(key: string, ttlMs: number): PriceData | null {
   const entry = priceCache.get(key);
-  if (entry && Date.now() - entry.at < CACHE_TTL_MS) return entry.data;
+  if (entry && Date.now() - entry.at < ttlMs) return entry.data;
   if (entry) priceCache.delete(key);
   return null;
 }
@@ -70,8 +77,13 @@ export async function POST(req: NextRequest) {
       condition: body.condition ?? null,
     };
 
+    const ttlMs =
+      typeof body.cacheDurationMs === 'number' && body.cacheDurationMs > 0
+        ? body.cacheDurationMs
+        : DEFAULT_CACHE_TTL_MS;
+
     const cacheKey = JSON.stringify(query);
-    const cached = getCached(cacheKey);
+    const cached = body.forceRefresh ? null : getCached(cacheKey, ttlMs);
     if (cached) {
       return NextResponse.json({ pricing: cached, cached: true });
     }

@@ -19,6 +19,7 @@ import ReviewGrid from '@/components/upload/ReviewGrid';
 import IdentificationProgress from '@/components/upload/IdentificationProgress';
 import UploadSummary from '@/components/upload/UploadSummary';
 import GoldButton from '@/components/ui/GoldButton';
+import { getCacheDurationMs } from '@/lib/settings';
 import styles from './upload.module.css';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -105,7 +106,10 @@ function generateMockDetections(fileCount: number, files?: File[]): DetectedStam
 
     if (match) {
       return {
-        id: `det-${match.id}`,
+        // Suffix with the file index: multiple uploaded files can match the
+        // same VERIFIED_STAMPS entry (e.g. several Harrison test photos),
+        // and a bare `det-${match.id}` would produce duplicate React keys.
+        id: `det-${match.id}-${i}`,
         boundingBox: {
           x: 10 + (i % 3) * 25,
           y: 15 + Math.floor(i / 3) * 35,
@@ -145,13 +149,16 @@ function generateMockIdentifiedStamps(
     .filter((d) => d.confirmed)
     .map((d, i) => {
       // Find matches from VERIFIED_STAMPS database
-      const matchedStamp = VERIFIED_STAMPS.find(s => 
-        d.id === `det-${s.id}` || d.description.includes(s.scottNumber) || s.keywords.some(k => d.description.toLowerCase().includes(k))
+      const matchedStamp = VERIFIED_STAMPS.find(s =>
+        d.id.startsWith(`det-${s.id}-`) || d.description.includes(s.scottNumber) || s.keywords.some(k => d.description.toLowerCase().includes(k))
       );
 
       if (matchedStamp) {
         return {
-          id: matchedStamp.id,
+          // Suffix with `i` so multiple confirmed stamps matching the same
+          // catalog entry get distinct ids instead of overwriting each
+          // other in the collection store.
+          id: `${matchedStamp.id}-${i}`,
           imageUrl: d.croppedImageUrl || matchedStamp.referenceImageUrl,
           identification: {
             country: matchedStamp.country,
@@ -198,7 +205,7 @@ function generateMockIdentifiedStamps(
       // Generic fallback
       return {
         id: `identified-${i}`,
-        imageUrl: d.croppedImageUrl || '/mock/stamps/placeholder.jpg',
+        imageUrl: d.croppedImageUrl,
         identification: {
           country: ['United States', 'Great Britain', 'Switzerland', 'Sweden'][
             i % 4
@@ -220,7 +227,7 @@ function generateMockIdentifiedStamps(
           ],
           confidence: d.confidence,
           status: 'identified' as const,
-          referenceImageUrl: '/mock/stamps/placeholder.jpg',
+          referenceImageUrl: null,
         },
         pricing: {
           estimatedValue: Math.floor(1000 + Math.random() * 50000),
@@ -291,6 +298,42 @@ function fileToBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = (error) => reject(error);
+  });
+}
+
+// Real phone/camera photos (and even modest downloaded reference images) can
+// be several MB at full resolution. Sent as-is to /api/stamps/identify, they
+// push Gemini's inference time past the route's per-attempt abort timeout,
+// so batch uploads reliably fail identification on anything but small,
+// pre-cropped images. Downscale to a reasonable max dimension client-side
+// before it ever leaves the browser.
+async function resizeImageForUpload(
+  file: File,
+  maxDimension = 1600,
+  quality = 0.85
+): Promise<string> {
+  const original = await fileToBase64(file);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
+      if (scale >= 1) {
+        resolve(original);
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(original);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(original);
+    img.src = original;
   });
 }
 
@@ -374,7 +417,7 @@ export default function UploadPage() {
       if (uploadMode === 'batch') {
         const detections: DetectedStamp[] = await Promise.all(
           uploadedFiles.map(async (file, index) => {
-            const base64Data = await fileToBase64(file);
+            const base64Data = await resizeImageForUpload(file);
             
             // Map each file name to a verified database stamp description
             const lowerName = file.name.toLowerCase();
@@ -404,7 +447,10 @@ export default function UploadPage() {
             }
 
             return {
-              id: match ? `det-${match.id}` : `det-batch-${index}-${Date.now()}`,
+              // Suffix the matched id with the file index: multiple uploaded
+              // files can match the same VERIFIED_STAMPS entry, and a bare
+              // `det-${match.id}` would produce duplicate React keys.
+              id: match ? `det-${match.id}-${index}` : `det-batch-${index}-${Date.now()}`,
               boundingBox: { x: 0, y: 0, width: 100, height: 100 },
               confidence: match ? 0.99 : 0.8,
               croppedImageUrl: base64Data,
@@ -568,23 +614,38 @@ export default function UploadPage() {
           setMockModeDetected(true);
         }
 
-        // 3. Send returned identification metadata to /api/pricing/lookup to fetch market pricing
-        const pricingRes = await fetch('/api/pricing/lookup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stampDescription: ident.description,
-            scottNumber: ident.scottNumber || undefined,
-            country: ident.country || undefined,
-            year: ident.yearOfIssue || undefined,
-            condition: ident.condition || undefined,
-          }),
-        });
+        // 3. Send returned identification metadata to /api/pricing/lookup to fetch market pricing.
+        // Only do this once the AI actually identified the stamp (matches the
+        // identify prompt's own MEDIUM-confidence floor of 0.5) — otherwise a
+        // marketplace search on "Unknown, no Scott number" still returns a
+        // confident-looking price with cited listings for a stamp the AI
+        // itself said it couldn't read, which is actively misleading.
+        const isIdentified =
+          typeof ident.aiConfidence === 'number' &&
+          ident.aiConfidence >= 0.5 &&
+          ident.country &&
+          ident.country !== 'Unknown' &&
+          ident.country !== 'Not a stamp';
 
         let pricingData = null;
-        if (pricingRes.ok) {
-          const resJson = await pricingRes.json();
-          pricingData = resJson.pricing;
+        if (isIdentified) {
+          const pricingRes = await fetch('/api/pricing/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stampDescription: ident.description,
+              scottNumber: ident.scottNumber || undefined,
+              country: ident.country || undefined,
+              year: ident.yearOfIssue || undefined,
+              condition: ident.condition || undefined,
+              cacheDurationMs: getCacheDurationMs(),
+            }),
+          });
+
+          if (pricingRes.ok) {
+            const resJson = await pricingRes.json();
+            pricingData = resJson.pricing;
+          }
         }
 
         // 4. Combine identification and pricing data, and save into identifiedStamps list
@@ -618,7 +679,11 @@ export default function UploadPage() {
         const rarityKey = ident.rarity ? (rarityMapping[ident.rarity.toLowerCase()] || 'common') : 'common';
 
         const identifiedStamp: Partial<Stamp> = {
-          id: ident.scottNumber ? `stamp-${ident.scottNumber.toLowerCase()}` : `stamp-${Date.now()}-${idx}`,
+          // Suffix with idx: two confirmed detections can both be identified
+          // as the same Scott number (e.g. duplicate photos of one stamp),
+          // and a bare `stamp-${scottNumber}` id would collide and silently
+          // overwrite one stamp with the other in the collection store.
+          id: ident.scottNumber ? `stamp-${ident.scottNumber.toLowerCase()}-${idx}` : `stamp-${Date.now()}-${idx}`,
           imageUrl: base64Image,
           identification: {
             country: ident.country || 'Unknown',
@@ -643,7 +708,12 @@ export default function UploadPage() {
               );
               if (matched && matched.referenceImageUrl) return matched.referenceImageUrl;
               if (ident.referenceImageUrl && ident.referenceImageUrl.startsWith('/')) return ident.referenceImageUrl;
-              return '/mock/stamps/placeholder.jpg';
+              // `/mock/stamps/placeholder.jpg` is a specific real stamp photo,
+              // not a neutral placeholder — falling back to it here would show
+              // an unmatched stamp a photo of a completely different, unrelated
+              // stamp captioned "Catalog Reference". Leave it unset so the UI's
+              // existing no-match empty state (🔍 icon) renders instead.
+              return null;
             })(),
             status: 'identified',
             alternatives: ident.alternatives || [],
@@ -730,8 +800,8 @@ export default function UploadPage() {
       const fullStamp: Stamp = {
         id: partialStamp.id || `stamp-${Date.now()}-${Math.random()}`,
         userId: 'mock-user',
-        imageUrl: partialStamp.imageUrl || '/mock/stamps/placeholder.jpg',
-        thumbnailUrl: partialStamp.imageUrl || '/mock/stamps/placeholder.jpg',
+        imageUrl: partialStamp.imageUrl || '/mock/stamps/no-image.svg',
+        thumbnailUrl: partialStamp.imageUrl || '/mock/stamps/no-image.svg',
         identification: {
           country: partialStamp.identification?.country ?? 'Unknown',
           year: partialStamp.identification?.year ?? null,

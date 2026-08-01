@@ -346,7 +346,14 @@ export const useStampsStore = create<StampsState>()(
     })),
   addStamp: (stamp) =>
     set((state) => {
-      const newStamps = [stamp, ...state.stamps];
+      // Upsert by id: importing a previously-exported collection (or any
+      // other re-add of an existing stamp) would otherwise append a second
+      // entry with the same id, producing duplicate React keys and two
+      // divergent copies of the same stamp in the collection.
+      const exists = state.stamps.some((s) => s.id === stamp.id);
+      const newStamps = exists
+        ? state.stamps.map((s) => (s.id === stamp.id ? stamp : s))
+        : [stamp, ...state.stamps];
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(

@@ -23,6 +23,11 @@ export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [lastTranslate, setLastTranslate] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    setLoadError(false);
+  }, [src]);
 
   /* Pinch zoom state */
   const lastTouchDistance = useRef<number | null>(null);
@@ -205,17 +210,35 @@ export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <img
-          ref={imgRef}
-          className={styles.imageCanvas}
-          src={src}
-          alt={alt}
-          draggable={false}
-          style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-            transformOrigin: 'center center',
-          }}
-        />
+        {loadError ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '280px',
+              fontSize: 'var(--text-3xl)',
+              color: 'var(--color-text-tertiary)',
+              background: 'rgba(0, 0, 0, 0.15)',
+            }}
+          >
+            🔍
+          </div>
+        ) : (
+          <img
+            ref={imgRef}
+            className={styles.imageCanvas}
+            src={src}
+            alt={alt}
+            draggable={false}
+            onError={() => setLoadError(true)}
+            style={{
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transformOrigin: 'center center',
+            }}
+          />
+        )}
 
         {/* Zoom indicator */}
         {scale > 1 && (
