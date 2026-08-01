@@ -12,6 +12,9 @@ import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 import { VERTEX_PROJECT, VERTEX_LOCATION, getVertexAuthOptions } from '@/lib/ai/vertex';
 
 export const maxDuration = 60;
+
+/** Captures the declared mime type from a data URL prefix. */
+const DATA_URL_RE = /^data:(image\/[\w+.-]+);base64,/;
 export const dynamic = 'force-dynamic';
 
 const IDENTIFICATION_PROMPT = `You are a world-class philatelist AI with encyclopedic knowledge of postage stamps from every country and era.
@@ -468,8 +471,15 @@ export async function POST(req: NextRequest) {
                 { text: IDENTIFICATION_PROMPT + "\n\n" + dbContext },
                 {
                   inlineData: {
-                    data: body.imageBase64.replace(/^data:image\/\w+;base64,/, ''),
-                    mimeType: body.mimeType || 'image/jpeg',
+                    data: body.imageBase64.replace(DATA_URL_RE, ''),
+                    // Derived from the data URL rather than assumed. The client
+                    // does not always send mimeType, and resizeImageForUpload
+                    // returns the ORIGINAL data URL untouched when no downscale
+                    // is needed — so a PNG could reach the model declared as JPEG.
+                    mimeType:
+                      body.mimeType ??
+                      DATA_URL_RE.exec(body.imageBase64)?.[1] ??
+                      'image/jpeg',
                   },
                 },
               ],
