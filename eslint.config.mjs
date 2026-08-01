@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Abandoned Firebase Hosting build output. It is a checked-out Next build
+    // and on its own accounts for ~24,700 of the reported lint errors, which
+    // buries the real ~90 in src/ and tests/.
+    ".firebase/**",
+    // Generated / vendored artifacts that are not our source.
+    "graphify-out/**",
+    "scratch/**",
   ]),
 ]);
 

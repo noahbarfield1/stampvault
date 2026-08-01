@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the template a fresh clone needs MUST stay tracked.
+!.env.local.example
 
 # vercel
 .vercel
@@ -40,4 +42,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# local scratch, agent tooling, generated reports, abandoned firebase build output.
+# Evidence worth keeping from e2e-reports/ is archived under docs/verification/.
+/scratch/
+/graphify-out/
+/.agents/
+/.firebase/
+/e2e-reports/
+*.bundle
+*.patch
+firebase-debug.log
