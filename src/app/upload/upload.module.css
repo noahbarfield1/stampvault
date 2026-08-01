@@ -253,3 +253,58 @@
     margin-bottom: 0;
   }
 }
+
+/* ── Detection failure panel ───────────────────────────────────────────────
+   Replaces the old silent fallback to fabricated demo boxes. A failure is
+   stated plainly, with two ways forward. */
+.errorPanel {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-negative-border);
+  background: var(--color-negative-bg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.errorText {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.errorBtn {
+  composes: touchTarget from global;
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.errorBtn:hover {
+  border-color: var(--color-accent-gold);
+}
+
+.savingNote {
+  margin-top: var(--space-3);
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

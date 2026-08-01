@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { DetectedStamp } from './SegmentationOverlay';
+import type { DetectedStamp } from '@/types/upload';
 import type { Stamp } from '@/types/stamp';
 import styles from './IdentificationProgress.module.css';
 

@@ -1,0 +1,293 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Sticky header ─────────────────────────────────────────────────────── */
+
+.header {
+  position: sticky;
+  /* Clears the fixed app header. */
+  top: calc(var(--header-height) + var(--space-2));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 10, 15, 0.82);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--color-glass-border);
+}
+
+.count {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  margin-right: auto;
+}
+
+.countNumber {
+  color: var(--color-positive);
+  font-family: var(--font-mono);
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.chip {
+  composes: touchTarget from global;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--color-accent-gold);
+}
+
+/* ── Hint ──────────────────────────────────────────────────────────────── */
+
+.hint {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 0 var(--space-2);
+}
+
+.warning {
+  composes: hint;
+  color: var(--color-warning, #f5a524);
+}
+
+/* ── Sticky action bar ─────────────────────────────────────────────────────
+   The primary CTA used to sit after the whole grid, roughly 2500px below the
+   fold on a 25-stamp review, with the confirmed count at the very top — so the
+   user could not see their progress while making it. */
+.actionBar {
+  position: sticky;
+  bottom: var(--space-3);
+  z-index: 3;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 10, 15, 0.86);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--color-glass-border);
+}
+
+.actionBarPrimary {
+  flex: 1;
+}
+
+.backBtn {
+  composes: touchTarget from global;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-glass-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .actionBar {
+    /* Sit above the mobile tab bar and the home indicator. */
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
+  }
+}
+
+.disabledReason {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ── Adjust sheet ──────────────────────────────────────────────────────────
+   Deliberately NOT a modal: the box being adjusted must stay visible. */
+.adjustSheet {
+  position: sticky;
+  bottom: var(--space-3);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 10, 15, 0.92);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--color-accent-gold);
+}
+
+@media (max-width: 860px) {
+  .adjustSheet {
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
+  }
+}
+
+.adjustTitle {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.nudgeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.nudgeLabel {
+  grid-column: 1 / -1;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.nudgeBtn {
+  composes: touchTarget from global;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-glass-border);
+  background: var(--color-glass);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.adjustActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.deleteBtn {
+  composes: touchTarget from global;
+  flex: 1;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-negative-border);
+  background: var(--color-negative-bg);
+  color: var(--color-negative);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.doneBtn {
+  composes: touchTarget from global;
+  flex: 1;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent-gold);
+  background: var(--color-accent-gold);
+  color: var(--color-text-inverse);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+/* ── Batch grid ────────────────────────────────────────────────────────── */
+
+.batchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+/* The whole card is the toggle target — no small buttons to hit. */
+.card {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-glass);
+  border: 2px solid var(--color-glass-border);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.cardSelected {
+  composes: card;
+  border-color: var(--color-positive);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.18);
+}
+
+.cardDeselected {
+  composes: card;
+  opacity: 0.5;
+}
+
+.cardImage {
+  width: 100%;
+  height: 150px;
+  /* `contain`, not `cover`: the user is being asked to verify a crop, so
+     showing them a re-crop of that crop defeats the purpose. */
+  object-fit: contain;
+  background: var(--color-bg-secondary);
+  display: block;
+}
+
+.cardBody {
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cardCheck {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  background: var(--color-positive);
+  color: white;
+}
+
+.cardCheckOff {
+  composes: cardCheck;
+  background: transparent;
+  border: 1px solid var(--color-glass-border);
+  color: transparent;
+}
+
+.cardLabel {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

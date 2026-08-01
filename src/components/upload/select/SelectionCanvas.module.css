@@ -1,0 +1,223 @@
+.viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-glass-border);
+  /* Vertical scrolling stays available until the user actually zooms in.
+     The old code set `touch-action: none` unconditionally, which meant a swipe
+     starting anywhere on the photo did nothing at all. */
+  touch-action: pan-y;
+}
+
+.viewportZoomed {
+  composes: viewport;
+  touch-action: none;
+}
+
+/* The transformed surface. Boxes are percentage children of this element, so
+   they follow the zoom automatically and getBoundingClientRect() on it returns
+   post-transform dimensions — which is what the gesture maths assumes. */
+.surface {
+  position: relative;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.image {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ── Detection box ─────────────────────────────────────────────────────── */
+
+.box {
+  position: absolute;
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  /* pan-y, NOT none: a vertical swipe that begins on a box must still scroll
+     the page. Only the box being adjusted opts out. */
+  touch-action: pan-y;
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.box:focus-visible {
+  outline: 2px solid var(--color-accent-amber);
+  outline-offset: 2px;
+}
+
+/* Selected: filled tint so inclusion reads at a glance on a small screen. */
+.boxSelected {
+  composes: box;
+  background: rgba(212, 165, 116, 0.16);
+  box-shadow: 0 0 0 1px rgba(10, 10, 15, 0.5);
+}
+
+/* Deselected: dimmed and dashed, still clearly present and tappable. */
+.boxDeselected {
+  composes: box;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.35);
+  opacity: 0.55;
+}
+
+/* Low model confidence, but still included — flagged rather than silently
+   dropped, because a silent exclusion is worse than a visible warning. */
+.boxUncertain {
+  composes: boxSelected;
+  border-color: var(--color-warning, #f5a524);
+  background: rgba(245, 165, 36, 0.14);
+}
+
+.boxAdjusting {
+  composes: boxSelected;
+  border-color: var(--color-accent-amber);
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.35), 0 0 18px rgba(212, 165, 116, 0.4);
+  touch-action: none;
+  cursor: move;
+}
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+
+.badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-gold);
+  color: var(--color-text-inverse);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: var(--weight-bold);
+  pointer-events: none;
+}
+
+.badgeOff {
+  composes: badge;
+  background: rgba(10, 10, 15, 0.8);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.badgeWarn {
+  composes: badge;
+  background: var(--color-warning, #f5a524);
+}
+
+/* ── Adjust affordance ─────────────────────────────────────────────────── */
+
+/* An explicit control, because long-press alone is undiscoverable. */
+.adjustChip {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-bg-primary);
+  background: var(--color-accent-gold);
+  color: var(--color-text-inverse);
+  font-size: 0.75rem;
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* Enlarge the hit area to 44px without growing the visual. */
+.adjustChip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* ── Resize handles ────────────────────────────────────────────────────── */
+
+.handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent-amber);
+  border: 2px solid var(--color-bg-primary);
+  border-radius: 50%;
+  touch-action: none;
+}
+
+.handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+.handleTL { top: -7px; left: -7px; cursor: nw-resize; }
+.handleTR { top: -7px; right: -7px; cursor: ne-resize; }
+.handleBL { bottom: -7px; left: -7px; cursor: sw-resize; }
+.handleBR { bottom: -7px; right: -7px; cursor: se-resize; }
+
+/* ── Zoom controls ─────────────────────────────────────────────────────── */
+
+.zoomControls {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  z-index: 2;
+}
+
+.zoomBtn {
+  composes: touchTarget from global;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-glass-border);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.zoomBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zoomBadge {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 10, 15, 0.75);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-accent);
+  pointer-events: none;
+}

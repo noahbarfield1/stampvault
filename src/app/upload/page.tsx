@@ -1,1071 +1,519 @@
 'use client';
 
-import React, {
-  useState,
-  useCallback,
-  useEffect,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import gsap from 'gsap';
 import { useUIStore } from '@/store/ui';
 import { useStampsStore } from '@/store/stamps';
+import { useUploadSession, STEPS, type UploadStep } from '@/store/uploadSession';
 import type { Stamp } from '@/types/stamp';
-import type { DetectedStamp, BoundingBox } from '@/components/upload/SegmentationOverlay';
+import type { BoundingBox, DetectedStamp } from '@/types/upload';
 import DropZone from '@/components/upload/DropZone';
-import SegmentationOverlay from '@/components/upload/SegmentationOverlay';
-import ReviewGrid from '@/components/upload/ReviewGrid';
+import StampSelectStep from '@/components/upload/select/StampSelectStep';
 import IdentificationProgress from '@/components/upload/IdentificationProgress';
 import UploadSummary from '@/components/upload/UploadSummary';
 import GoldButton from '@/components/ui/GoldButton';
-import { getCacheDurationMs } from '@/lib/settings';
+import {
+  resizeImageForUpload,
+  createCropper,
+  makeThumbnail,
+  nextFrame,
+  SEGMENT_MAX_DIMENSION,
+  SEGMENT_QUALITY,
+} from '@/lib/upload/image-pipeline';
+import { segmentImage, describeSegmentFailure, type SegmentOutcome } from '@/lib/upload/segment-client';
+import { identifyStamp, isIdentified, lookupPricing } from '@/lib/upload/identify-client';
+import { buildIdentifiedStamp, buildFailedStamp, toFullStamp } from '@/lib/upload/to-stamp';
 import styles from './upload.module.css';
-
-/* ── Types ─────────────────────────────────────────────────────────────── */
-
-type UploadStep =
-  | 'upload'
-  | 'segmentation'
-  | 'review'
-  | 'identification'
-  | 'complete';
-
-const STEPS: { key: UploadStep; label: string }[] = [
-  { key: 'upload', label: 'Upload' },
-  { key: 'segmentation', label: 'Detect' },
-  { key: 'review', label: 'Review' },
-  { key: 'identification', label: 'Identify' },
-  { key: 'complete', label: 'Complete' },
-];
-
-import { VERIFIED_STAMPS, type VerifiedStampMock } from '@/lib/pricing/verified-database';
-
-function generateMockDetections(fileCount: number, files?: File[]): DetectedStamp[] {
-  if (!files || files.length === 0) {
-    // Fallback to defaults
-    const descriptions = [
-      'US Inverted Jenny airmail stamp',
-      'British Penny Black first issue',
-      'Swiss Basel Dove cantonal',
-      'Sweden Treskilling Yellow error',
-      'Austria Red Mercury newspaper stamp',
-      'Mauritius Post Office Blue',
-    ];
-
-    const count = Math.min(fileCount * 3, 6);
-    return Array.from({ length: count }, (_, i) => ({
-      id: `detected-${i}`,
-      boundingBox: {
-        x: 10 + (i % 3) * 30,
-        y: 10 + Math.floor(i / 3) * 40,
-        width: 22,
-        height: 30,
-      },
-      confidence: 0.7 + Math.random() * 0.28,
-      croppedImageUrl: '',
-      description: descriptions[i % descriptions.length],
-      confirmed: false,
-      rejected: false,
-    }));
-  }
-
-  // Map each file to a detection object
-  return files.map((file, i) => {
-    const lowerName = file.name.toLowerCase();
-    
-    // Explicit name matches to find the correct verified stamp
-    let match = VERIFIED_STAMPS.find(stamp => 
-      stamp.keywords.some(keyword => lowerName.includes(keyword))
-    );
-
-    // Harrison precancel checks (for IMG_4184.heic, stamp 4.png, Screenshot)
-    if (!match && (
-      lowerName.includes('img_4184') || 
-      lowerName.includes('stamp-4') || 
-      lowerName.includes('screenshot') ||
-      lowerName.includes('harrison')
-    )) {
-      match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-harrison');
-    }
-
-    // Washington Prexie check (for Stamp 2.png)
-    if (!match && (lowerName.includes('stamp-2') || lowerName.includes('washington'))) {
-      match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-washington-1c');
-    }
-
-    // Van Buren Prexie check (for stamp 3.png)
-    if (!match && (lowerName.includes('stamp-3') || lowerName.includes('van buren') || lowerName.includes('vanburen'))) {
-      match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-vanburen-8c');
-    }
-
-    // Jenny check (for inverted-jenny.jpg)
-    if (!match && lowerName.includes('jenny')) {
-      match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-jenny');
-    }
-
-    if (match) {
-      return {
-        // Suffix with the file index: multiple uploaded files can match the
-        // same VERIFIED_STAMPS entry (e.g. several Harrison test photos),
-        // and a bare `det-${match.id}` would produce duplicate React keys.
-        id: `det-${match.id}-${i}`,
-        boundingBox: {
-          x: 10 + (i % 3) * 25,
-          y: 15 + Math.floor(i / 3) * 35,
-          width: 20,
-          height: 26,
-        },
-        confidence: 0.99,
-        croppedImageUrl: '',
-        description: match.detectedDescription,
-        confirmed: false,
-        rejected: false,
-      };
-    }
-
-    // Fallback description if no match
-    return {
-      id: `detected-${i}`,
-      boundingBox: {
-        x: 10 + (i % 3) * 25,
-        y: 15 + Math.floor(i / 3) * 35,
-        width: 20,
-        height: 26,
-      },
-      confidence: 0.7 + Math.random() * 0.28,
-      croppedImageUrl: '',
-      description: `Unknown Stamp (${file.name})`,
-      confirmed: false,
-      rejected: false,
-    };
-  });
-}
-
-function generateMockIdentifiedStamps(
-  detected: DetectedStamp[]
-): Partial<Stamp>[] {
-  return detected
-    .filter((d) => d.confirmed)
-    .map((d, i) => {
-      // Find matches from VERIFIED_STAMPS database
-      const matchedStamp = VERIFIED_STAMPS.find(s =>
-        d.id.startsWith(`det-${s.id}-`) || d.description.includes(s.scottNumber) || s.keywords.some(k => d.description.toLowerCase().includes(k))
-      );
-
-      if (matchedStamp) {
-        return {
-          // Suffix with `i` so multiple confirmed stamps matching the same
-          // catalog entry get distinct ids instead of overwriting each
-          // other in the collection store.
-          id: `${matchedStamp.id}-${i}`,
-          imageUrl: d.croppedImageUrl || matchedStamp.referenceImageUrl,
-          identification: {
-            country: matchedStamp.country,
-            year: matchedStamp.year,
-            denomination: matchedStamp.denomination,
-            scottNumber: matchedStamp.scottNumber,
-            michelNumber: matchedStamp.michelNumber,
-            description: matchedStamp.description,
-            condition: matchedStamp.condition as any,
-            rarity: matchedStamp.rarity as any,
-            color: matchedStamp.color,
-            perforation: matchedStamp.perforation,
-            watermark: matchedStamp.watermark,
-            series: matchedStamp.series,
-            confidence: d.confidence,
-            status: 'identified' as const,
-            referenceImageUrl: matchedStamp.referenceImageUrl,
-          },
-          pricing: {
-            estimatedValue: matchedStamp.estimatedValue,
-            currency: 'USD',
-            confidence: 0.95,
-            sources: matchedStamp.sources.map(s => ({
-              ...s,
-              fetchedAt: new Date().toISOString()
-            })),
-            priceRange: matchedStamp.priceRange,
-            lastUpdated: new Date().toISOString(),
-            hipValue: matchedStamp.hipValue,
-            sourceBreakdown: matchedStamp.sourceBreakdown,
-          },
-          priceHistory: matchedStamp.priceHistory,
-          tags: matchedStamp.tags,
-          notes: matchedStamp.notes,
-          isFavorite: false,
-          purchasePrice: null,
-          purchaseDate: null,
-          grade: matchedStamp.grade,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-
-      // Generic fallback
-      return {
-        id: `identified-${i}`,
-        imageUrl: d.croppedImageUrl,
-        identification: {
-          country: ['United States', 'Great Britain', 'Switzerland', 'Sweden'][
-            i % 4
-          ],
-          year: 1840 + i * 15,
-          denomination: ['1d', '24¢', '2½ Rp', '3 Skilling'][i % 4],
-          scottNumber: `${i + 1}`,
-          michelNumber: `${i + 1}`,
-          description: d.description,
-          condition: (['fine', 'very_fine', 'used', 'mint'] as const)[i % 4],
-          rarity: (['rare', 'very_rare', 'uncommon', 'scarce'] as const)[
-            i % 4
-          ],
-          color: ['Black', 'Blue & Red', 'Multicolor', 'Yellow'][i % 4],
-          perforation: i % 2 === 0 ? 'Imperforate' : '11',
-          watermark: i % 3 === 0 ? 'Small Crown' : 'None',
-          series: ['Line-Engraved', 'Air Mail', 'Cantonal', 'Coat of Arms'][
-            i % 4
-          ],
-          confidence: d.confidence,
-          status: 'identified' as const,
-          referenceImageUrl: null,
-        },
-        pricing: {
-          estimatedValue: Math.floor(1000 + Math.random() * 50000),
-          currency: 'USD',
-          confidence: 0.7 + Math.random() * 0.25,
-          sources: [],
-          priceRange: { min: 800, max: 60000 },
-          lastUpdated: new Date().toISOString(),
-          hipValue: null,
-          sourceBreakdown: {
-            hipstamp: null,
-            ebay: null,
-            delcampe: null,
-            stampworld: null,
-          },
-        },
-        priceHistory: [],
-        tags: [],
-        notes: '',
-        isFavorite: false,
-        purchasePrice: null,
-        purchaseDate: null,
-        grade: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-}
-
-// Helper to crop image using HTML5 Canvas
-async function cropStampImage(srcUrl: string, box: BoundingBox): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = srcUrl;
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const px_x = (box.x / 100) * img.naturalWidth;
-        const px_y = (box.y / 100) * img.naturalHeight;
-        const px_w = (box.width / 100) * img.naturalWidth;
-        const px_h = (box.height / 100) * img.naturalHeight;
-
-        canvas.width = px_w;
-        canvas.height = px_h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Canvas 2D context not available'));
-          return;
-        }
-
-        ctx.drawImage(img, px_x, px_y, px_w, px_h, 0, 0, px_w, px_h);
-        const base64Data = canvas.toDataURL('image/jpeg');
-        resolve(base64Data);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    img.onerror = () => {
-      reject(new Error('Failed to load source image for cropping'));
-    };
-  });
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-}
-
-// Real phone/camera photos (and even modest downloaded reference images) can
-// be several MB at full resolution. Sent as-is to /api/stamps/identify, they
-// push Gemini's inference time past the route's per-attempt abort timeout,
-// so batch uploads reliably fail identification on anything but small,
-// pre-cropped images. Downscale to a reasonable max dimension client-side
-// before it ever leaves the browser.
-async function resizeImageForUpload(
-  file: File,
-  maxDimension = 1600,
-  quality = 0.85
-): Promise<string> {
-  const original = await fileToBase64(file);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
-      if (scale >= 1) {
-        resolve(original);
-        return;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(original);
-        return;
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = () => resolve(original);
-    img.src = original;
-  });
-}
-
-/* ── Component ─────────────────────────────────────────────────────────── */
 
 export default function UploadPage() {
   const router = useRouter();
   const contentRef = useRef<HTMLDivElement>(null);
   const addStamp = useStampsStore((s) => s.addStamp);
+  const addToast = useUIStore((s) => s.addToast);
 
-  /* State */
-  const [currentStep, setCurrentStep] = useState<UploadStep>('upload');
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [detectedStamps, setDetectedStamps] = useState<DetectedStamp[]>([]);
-  const [identifiedStamps, setIdentifiedStamps] = useState<
-    Partial<Stamp>[]
-  >([]);
-  const [currentIdentificationIndex, setCurrentIdentificationIndex] =
-    useState(0);
+  const session = useUploadSession();
+  const {
+    step,
+    mode,
+    files,
+    sheetImageDataUrl,
+    detections,
+    identified,
+    identifyIndex,
+    hasHydrated,
+    restoreWarning,
+  } = session;
+
   const [isDetecting, setIsDetecting] = useState(false);
-  const [uploadMode, setUploadMode] = useState<'batch' | 'sheet'>('sheet');
-  const [mockModeDetected, setMockModeDetected] = useState(false);
+  const [cropProgress, setCropProgress] = useState<string | null>(null);
+  const [segmentError, setSegmentError] = useState<SegmentOutcome | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  /* Preview URL from first uploaded file */
-  const previewUrl = useMemo(() => {
-    if (uploadedFiles.length > 0) {
-      return URL.createObjectURL(uploadedFiles[0]);
+  const stepIndex = useMemo(() => STEPS.findIndex((s) => s.key === step), [step]);
+  const selected = useMemo(() => detections.filter((d) => d.confirmed), [detections]);
+
+  /* A restored session that lost its photo explains itself once, then clears. */
+  useEffect(() => {
+    if (restoreWarning) {
+      addToast({ type: 'warning', title: 'Upload not restored', message: restoreWarning });
+      session.clearRestoreWarning();
     }
-    return '/mock/stamps/album-page.jpg';
-  }, [uploadedFiles]);
+  }, [restoreWarning, addToast, session]);
 
+  /* Warn before navigating away mid-flow. Minutes of AI work are at stake. */
+  useEffect(() => {
+    if (step === 'upload' || step === 'complete') return;
+    const handler = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [step]);
 
-  /* Step index */
-  const stepIndex = useMemo(
-    () => STEPS.findIndex((s) => s.key === currentStep),
-    [currentStep]
-  );
+  /* Abort any in-flight AI work if the page unmounts. */
+  useEffect(() => () => abortRef.current?.abort(), []);
 
-  /* GSAP step transition */
   const animateTransition = useCallback(
-    (nextStep: UploadStep) => {
-      if (!contentRef.current) {
-        setCurrentStep(nextStep);
+    (next: UploadStep) => {
+      const el = contentRef.current;
+      if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        session.setStep(next);
         return;
       }
       const tl = gsap.timeline();
-      tl.to(contentRef.current, {
+      tl.to(el, {
         opacity: 0,
         y: -20,
         duration: 0.2,
         ease: 'power2.in',
-        onComplete: () => {
-          setCurrentStep(nextStep);
-        },
+        onComplete: () => session.setStep(next),
       });
-      tl.fromTo(
-        contentRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
-      );
+      tl.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' });
     },
-    []
+    [session],
   );
 
-  /* File upload handler */
-  const handleFilesSelected = useCallback((files: File[]) => {
-    setUploadedFiles(files);
-    if (files.length > 1) {
-      setUploadMode('batch');
-    } else {
-      setUploadMode('sheet');
+  /* ── Upload step ───────────────────────────────────────────────────────── */
+
+  const handleFilesSelected = useCallback(
+    (picked: File[]) => {
+      setSegmentError(null);
+      session.setFiles(picked);
+      session.setMode(picked.length > 1 ? 'batch' : 'sheet');
+    },
+    [session],
+  );
+
+  const runSheetDetection = useCallback(async () => {
+    const file = files[0];
+    // Downscale BEFORE upload. The sheet path previously sent the full-
+    // resolution photo, and a 12MP iPhone JPEG base64s to 4-7MB against
+    // Vercel's hard 4.5MB body cap — a guaranteed 413 on a real phone.
+    const dataUrl = await resizeImageForUpload(file, SEGMENT_MAX_DIMENSION, SEGMENT_QUALITY);
+    session.setSheetImage(dataUrl);
+
+    let outcome = await segmentImage(dataUrl);
+
+    // One automatic retry at a smaller size before bothering the user.
+    if (outcome.kind === 'payload_too_large') {
+      const smaller = await resizeImageForUpload(file, 1200, 0.75);
+      session.setSheetImage(smaller);
+      outcome = await segmentImage(smaller);
     }
-  }, []);
 
-  /* Proceed from upload to segmentation */
-  const handleProceedToSegmentation = useCallback(async () => {
-    if (uploadedFiles.length === 0) return;
+    if (outcome.kind !== 'ok') {
+      // No fabricated boxes. The old code fell back to hardcoded demo
+      // detections named by matching the FILENAME against the catalog, with
+      // only a console.error — invisible on a phone.
+      setSegmentError(outcome);
+      addToast({
+        type: 'error',
+        title: 'Could not detect stamps',
+        message: describeSegmentFailure(outcome),
+      });
+      return;
+    }
 
+    session.setDetections(
+      outcome.stamps.map((s, i) => ({
+        id: `det-${i}-${s.boundingBox.x.toFixed(1)}-${s.boundingBox.y.toFixed(1)}`,
+        boundingBox: s.boundingBox,
+        confidence: s.confidence,
+        croppedImageUrl: '',
+        description: s.description,
+        // Selected by default: this is the point of the merged step. A correct
+        // 20-stamp detection should cost zero taps, not twenty.
+        confirmed: true,
+        rejected: false,
+        source: 'ai' as const,
+      })),
+    );
+    if (outcome.truncated) {
+      addToast({
+        type: 'warning',
+        title: 'Too many stamps',
+        message: 'Only the first 60 are shown. Photograph the rest separately.',
+      });
+    }
+    animateTransition('select');
+  }, [files, session, addToast, animateTransition]);
+
+  const runBatchPrep = useCallback(async () => {
+    // Batch mode used to skip segmentation entirely and assign confidence 0.99
+    // from a filename keyword match, before any AI ran. Now each photo is
+    // simply a whole-frame candidate with no invented score; identification
+    // does the real work.
+    const prepared: DetectedStamp[] = [];
+    for (const [index, file] of files.entries()) {
+      setCropProgress(`Preparing ${index + 1} of ${files.length}`);
+      const dataUrl = await resizeImageForUpload(file);
+      prepared.push({
+        id: `batch-${index}-${file.name}`,
+        boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+        confidence: null,
+        croppedImageUrl: dataUrl,
+        description: file.name,
+        confirmed: true,
+        rejected: false,
+        source: 'ai',
+      });
+      await nextFrame();
+    }
+    setCropProgress(null);
+    session.setDetections(prepared);
+    animateTransition('select');
+  }, [files, session, animateTransition]);
+
+  const handleProceedToSelect = useCallback(async () => {
+    if (files.length === 0) return;
+    setSegmentError(null);
     setIsDetecting(true);
     try {
-      if (uploadMode === 'batch') {
-        const detections: DetectedStamp[] = await Promise.all(
-          uploadedFiles.map(async (file, index) => {
-            const base64Data = await resizeImageForUpload(file);
-            
-            // Map each file name to a verified database stamp description
-            const lowerName = file.name.toLowerCase();
-            let match = VERIFIED_STAMPS.find(stamp => 
-              stamp.keywords.some(keyword => lowerName.includes(keyword))
-            );
-
-            if (!match && (
-              lowerName.includes('img_4184') || 
-              lowerName.includes('stamp-4') || 
-              lowerName.includes('screenshot') ||
-              lowerName.includes('harrison')
-            )) {
-              match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-harrison');
-            }
-
-            if (!match && (lowerName.includes('stamp-2') || lowerName.includes('washington'))) {
-              match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-washington-1c');
-            }
-
-            if (!match && (lowerName.includes('stamp-3') || lowerName.includes('van buren') || lowerName.includes('vanburen'))) {
-              match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-vanburen-8c');
-            }
-
-            if (!match && lowerName.includes('jenny')) {
-              match = VERIFIED_STAMPS.find(stamp => stamp.id === 'stamp-jenny');
-            }
-
-            return {
-              // Suffix the matched id with the file index: multiple uploaded
-              // files can match the same VERIFIED_STAMPS entry, and a bare
-              // `det-${match.id}` would produce duplicate React keys.
-              id: match ? `det-${match.id}-${index}` : `det-batch-${index}-${Date.now()}`,
-              boundingBox: { x: 0, y: 0, width: 100, height: 100 },
-              confidence: match ? 0.99 : 0.8,
-              croppedImageUrl: base64Data,
-              description: match ? match.detectedDescription : `Uploaded Photo (${file.name})`,
-              confirmed: true, // Auto-confirm batch files by default
-              rejected: false,
-            };
-          })
-        );
-        setDetectedStamps(detections);
-        animateTransition('review');
-      } else {
-        const firstFile = uploadedFiles[0];
-        const base64Data = await fileToBase64(firstFile);
-
-        const res = await fetch('/api/stamps/segment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64Data }),
-        });
-
-        if (!res.ok) {
-          throw new Error(`Segmentation API failed: ${res.statusText}`);
-        }
-
-        const data = await res.json();
-
-        if (data.stamps && data.stamps.length > 0) {
-          const detections: DetectedStamp[] = data.stamps.map((s: any, index: number) => {
-            const x = s.boundingBox.x1;
-            const y = s.boundingBox.y1;
-            const width = s.boundingBox.x2 - s.boundingBox.x1;
-            const height = s.boundingBox.y2 - s.boundingBox.y1;
-
-            return {
-              id: `det-${index}-${Date.now()}`,
-              boundingBox: { x, y, width, height },
-              confidence: s.confidence,
-              croppedImageUrl: URL.createObjectURL(firstFile),
-              description: s.description,
-              confirmed: false,
-              rejected: false,
-            };
-          });
-          setDetectedStamps(detections);
-        } else {
-          setDetectedStamps([
-            {
-              id: `det-fallback-${Date.now()}`,
-              boundingBox: { x: 5, y: 5, width: 90, height: 90 },
-              confidence: 0.5,
-              croppedImageUrl: URL.createObjectURL(firstFile),
-              description: 'Detected Stamp (Full Image)',
-              confirmed: false,
-              rejected: false,
-            }
-          ]);
-        }
-
-        animateTransition('segmentation');
-      }
+      if (mode === 'batch') await runBatchPrep();
+      else await runSheetDetection();
     } catch (err) {
-      console.error('Segmentation error, falling back to client-side heuristics:', err);
-      const detections = generateMockDetections(uploadedFiles.length, uploadedFiles);
-      detections.forEach((d, index) => {
-        if (uploadedFiles[index]) {
-          d.croppedImageUrl = URL.createObjectURL(uploadedFiles[index]);
-        } else {
-          d.croppedImageUrl = '/mock/stamps/album-page.jpg';
-        }
-      });
-      setDetectedStamps(detections);
-      animateTransition(uploadMode === 'batch' ? 'review' : 'segmentation');
+      const message = err instanceof Error ? err.message : 'Could not read that photo';
+      setSegmentError({ kind: 'network', message });
+      addToast({ type: 'error', title: 'Upload failed', message });
     } finally {
       setIsDetecting(false);
+      setCropProgress(null);
     }
-  }, [uploadedFiles, uploadMode, animateTransition]);
+  }, [files, mode, runBatchPrep, runSheetDetection, addToast]);
 
-  /* Adjust bounding box */
-  const handleAdjustBox = useCallback(
-    (index: number, box: BoundingBox) => {
-      setDetectedStamps((prev) =>
-        prev.map((s, i) => (i === index ? { ...s, boundingBox: box } : s))
-      );
-    },
-    []
-  );
+  /** Skip detection and let the user frame the stamp themselves. Honest: they drew it. */
+  const handleDrawMyself = useCallback(() => {
+    setSegmentError(null);
+    session.setDetections([
+      {
+        id: 'user-box-initial',
+        boundingBox: { x: 15, y: 15, width: 70, height: 70 },
+        confidence: null,
+        croppedImageUrl: '',
+        description: 'Added by you',
+        confirmed: true,
+        rejected: false,
+        source: 'user',
+      },
+    ]);
+    animateTransition('select');
+  }, [session, animateTransition]);
 
-  /* Proceed to review */
-  const handleProceedToReview = useCallback(async () => {
-    const updated = [...detectedStamps];
-    for (let i = 0; i < updated.length; i++) {
+  /* ── Identification ────────────────────────────────────────────────────── */
+
+  const handleIdentify = useCallback(async () => {
+    if (selected.length === 0) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const now = new Date().toISOString();
+
+    // Crop first, with visible progress. The old code decoded the source image
+    // once PER BOX inside the loop — 20 boxes meant 20 decodes of a 12MP photo,
+    // 5-15 seconds of frozen UI with no loading state on the button at all.
+    const crops = new Map<string, string>();
+    if (mode === 'sheet' && sheetImageDataUrl) {
+      setIsDetecting(true);
       try {
-        const base64 = await cropStampImage(previewUrl, updated[i].boundingBox);
-        updated[i].croppedImageUrl = base64;
+        const cropper = await createCropper(sheetImageDataUrl);
+        for (const [i, d] of selected.entries()) {
+          setCropProgress(`Cropping ${i + 1} of ${selected.length}`);
+          crops.set(d.id, cropper.crop(d.boundingBox));
+          // Yield so the frame loop keeps running and the progress text paints.
+          if (i % 4 === 3) await nextFrame();
+        }
       } catch (err) {
-        console.error('Failed to crop preview:', err);
+        addToast({
+          type: 'error',
+          title: 'Could not crop the photo',
+          message: err instanceof Error ? err.message : undefined,
+        });
+        setIsDetecting(false);
+        setCropProgress(null);
+        return;
       }
+      setIsDetecting(false);
+      setCropProgress(null);
+    } else {
+      for (const d of selected) crops.set(d.id, d.croppedImageUrl);
     }
-    setDetectedStamps(updated);
-    animateTransition('review');
-  }, [detectedStamps, previewUrl, animateTransition]);
 
-
-  /* Confirm/reject handlers */
-  const handleConfirm = useCallback((index: number) => {
-    setDetectedStamps((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? { ...s, confirmed: !s.confirmed, rejected: false }
-          : s
-      )
-    );
-  }, []);
-
-  const handleReject = useCallback((index: number) => {
-    setDetectedStamps((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? { ...s, rejected: !s.rejected, confirmed: false }
-          : s
-      )
-    );
-  }, []);
-
-  /* Proceed to identification */
-  const handleProceedToIdentification = useCallback(async () => {
     animateTransition('identification');
-    const confirmed = detectedStamps.filter((s) => s.confirmed);
     const results: Partial<Stamp>[] = [];
 
-    for (let idx = 0; idx < confirmed.length; idx++) {
-      setCurrentIdentificationIndex(idx);
-      const target = confirmed[idx];
+    for (const [idx, target] of selected.entries()) {
+      if (controller.signal.aborted) break;
+      session.setIdentifyIndex(idx);
+      session.setIdentifyStatus(target.id, 'running');
+      const image = crops.get(target.id) ?? target.croppedImageUrl;
 
       try {
-        // 1. Get base64 image data
-        let base64Image = target.croppedImageUrl;
-        if (uploadMode !== 'batch') {
-          base64Image = await cropStampImage(previewUrl, target.boundingBox);
-          target.croppedImageUrl = base64Image;
-        }
-
-        // 2. Send base64 image data to /api/stamps/identify
-        const identifyRes = await fetch('/api/stamps/identify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64Image }),
-        });
-        
-        if (!identifyRes.ok) {
-          throw new Error(`Identify API error: ${identifyRes.statusText}`);
-        }
-        
-        const identifyData = await identifyRes.json();
-        const ident = identifyData.identification;
-
-        // Surface a warning if the AI ran in mock mode (missing/invalid API key),
-        // so users don't mistake simulated data for a real identification.
-        if (ident?._mockMode) {
-          setMockModeDetected(true);
-        }
-
-        // 3. Send returned identification metadata to /api/pricing/lookup to fetch market pricing.
-        // Only do this once the AI actually identified the stamp (matches the
-        // identify prompt's own MEDIUM-confidence floor of 0.5) — otherwise a
-        // marketplace search on "Unknown, no Scott number" still returns a
-        // confident-looking price with cited listings for a stamp the AI
-        // itself said it couldn't read, which is actively misleading.
-        const isIdentified =
-          typeof ident.aiConfidence === 'number' &&
-          ident.aiConfidence >= 0.5 &&
-          ident.country &&
-          ident.country !== 'Unknown' &&
-          ident.country !== 'Not a stamp';
-
-        let pricingData = null;
-        if (isIdentified) {
-          const pricingRes = await fetch('/api/pricing/lookup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              stampDescription: ident.description,
-              scottNumber: ident.scottNumber || undefined,
-              country: ident.country || undefined,
-              year: ident.yearOfIssue || undefined,
-              condition: ident.condition || undefined,
-              cacheDurationMs: getCacheDurationMs(),
-            }),
-          });
-
-          if (pricingRes.ok) {
-            const resJson = await pricingRes.json();
-            pricingData = resJson.pricing;
-          }
-        }
-
-        // 4. Combine identification and pricing data, and save into identifiedStamps list
-        const conditionMapping: Record<string, string> = {
-          'superb': 'superb',
-          'extremely fine': 'very_fine',
-          'very fine': 'very_fine',
-          'fine-very fine': 'very_fine',
-          'fine': 'fine',
-          'very good': 'fine',
-          'good': 'poor',
-          'average': 'poor',
-          'poor': 'poor',
-          'mint': 'mint',
-          'mint_nh': 'mint_nh',
-          'unused': 'unused',
-          'used': 'used',
-        };
-
-        const rarityMapping: Record<string, string> = {
-          'common': 'common',
-          'uncommon': 'uncommon',
-          'scarce': 'scarce',
-          'rare': 'rare',
-          'very_rare': 'very_rare',
-          'extremely_rare': 'extremely_rare',
-          'unique': 'unique',
-        };
-
-        const conditionKey = ident.condition ? (conditionMapping[ident.condition.toLowerCase()] || 'unknown') : 'unknown';
-        const rarityKey = ident.rarity ? (rarityMapping[ident.rarity.toLowerCase()] || 'common') : 'common';
-
-        const identifiedStamp: Partial<Stamp> = {
-          // Suffix with idx: two confirmed detections can both be identified
-          // as the same Scott number (e.g. duplicate photos of one stamp),
-          // and a bare `stamp-${scottNumber}` id would collide and silently
-          // overwrite one stamp with the other in the collection store.
-          id: ident.scottNumber ? `stamp-${ident.scottNumber.toLowerCase()}-${idx}` : `stamp-${Date.now()}-${idx}`,
-          imageUrl: base64Image,
-          identification: {
-            country: ident.country || 'Unknown',
-            year: ident.yearOfIssue || null,
-            denomination: ident.denomination || null,
-            scottNumber: ident.scottNumber || null,
-            michelNumber: ident.michelNumber || null,
-            description: ident.description || 'Identified Stamp',
-            condition: conditionKey as any,
-            rarity: rarityKey as any,
-            color: ident.colorVariant || null,
-            perforation: ident.perforationGauge || null,
-            watermark: ident.watermark || null,
-            series: ident.series || null,
-            confidence: ident.aiConfidence || target.confidence,
-            referenceImageUrl: (() => {
-              const matched = VERIFIED_STAMPS.find(
-                (s) =>
-                  (s.scottNumber?.trim().toLowerCase() === ident.scottNumber?.trim().toLowerCase() &&
-                  s.country?.trim().toLowerCase() === ident.country?.trim().toLowerCase()) ||
-                  (s.id === ident.matchedCatalogId)
-              );
-              if (matched && matched.referenceImageUrl) return matched.referenceImageUrl;
-              if (ident.referenceImageUrl && ident.referenceImageUrl.startsWith('/')) return ident.referenceImageUrl;
-              // `/mock/stamps/placeholder.jpg` is a specific real stamp photo,
-              // not a neutral placeholder — falling back to it here would show
-              // an unmatched stamp a photo of a completely different, unrelated
-              // stamp captioned "Catalog Reference". Leave it unset so the UI's
-              // existing no-match empty state (🔍 icon) renders instead.
-              return null;
-            })(),
-            status: 'identified',
-            alternatives: ident.alternatives || [],
-          },
-          pricing: pricingData || {
-            estimatedValue: ident.estimatedValue?.asIs || 0,
-            currency: 'USD',
-            confidence: ident.estimatedValue?.confidence || 0.5,
-            sources: [],
-            priceRange: {
-              min: ident.estimatedValue?.asIs ? ident.estimatedValue.asIs * 0.8 : 0,
-              max: ident.estimatedValue?.asIs ? ident.estimatedValue.asIs * 1.2 : 0,
-            },
-            lastUpdated: new Date().toISOString(),
-            hipValue: null,
-            sourceBreakdown: { hipstamp: null, ebay: null, delcampe: null, stampworld: null },
-          },
-          priceHistory: pricingData?.priceHistory || [
-            {
-              date: new Date().toISOString(),
-              value: pricingData?.estimatedValue || ident.estimatedValue?.asIs || 0,
-              sources: pricingData?.sources?.length || 1,
-            }
-          ],
-          tags: ident.topicThemes || [],
-          notes: ident.identificationNotes || '',
-          isFavorite: false,
-          purchasePrice: null,
-          purchaseDate: null,
-          grade: ident.gradeScore || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        results.push(identifiedStamp);
-        setIdentifiedStamps([...results]);
+        const ident = await identifyStamp(image, controller.signal);
+        const pricing = isIdentified(ident)
+          ? ((await lookupPricing(ident, { signal: controller.signal })) as Stamp['pricing'] | null)
+          : null;
+        results.push(buildIdentifiedStamp({ ident, imageDataUrl: image, pricing, index: idx, now }));
+        session.setIdentifyStatus(target.id, 'done');
       } catch (err) {
-        console.error('Error identifying stamp:', err);
-        const fallbackStamp: Partial<Stamp> = {
-          id: `stamp-error-${Date.now()}-${idx}`,
-          imageUrl: target.croppedImageUrl || previewUrl,
-          identification: {
-            country: 'Unknown',
-            year: null,
-            denomination: null,
-            scottNumber: null,
-            michelNumber: null,
-            description: 'Failed to identify stamp',
-            condition: 'unknown',
-            rarity: 'common',
-            color: null,
-            perforation: null,
-            watermark: null,
-            series: null,
-            confidence: 0,
-            status: 'failed',
-            referenceImageUrl: null,
-          },
-          pricing: null,
-          priceHistory: [],
-          tags: [],
-          notes: err instanceof Error ? err.message : 'Unknown error',
-          isFavorite: false,
-          purchasePrice: null,
-          purchaseDate: null,
-          grade: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        results.push(fallbackStamp);
-        setIdentifiedStamps([...results]);
+        if (controller.signal.aborted) break;
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        results.push(buildFailedStamp({ imageDataUrl: image, message, index: idx, now }));
+        session.setIdentifyStatus(target.id, 'error');
       }
-
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      session.setIdentified([...results]);
+      // NOTE: the previous 800ms artificial delay per stamp is gone. On a
+      // 20-stamp batch it added 16 seconds of pure waiting.
     }
 
-    animateTransition('complete');
-  }, [detectedStamps, previewUrl, animateTransition]);
+    abortRef.current = null;
+    if (!controller.signal.aborted) animateTransition('complete');
+  }, [selected, mode, sheetImageDataUrl, session, addToast, animateTransition]);
 
+  const handleCancelIdentification = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    addToast({ type: 'info', title: 'Identification cancelled' });
+    animateTransition('select');
+  }, [addToast, animateTransition]);
 
-  /* Save all */
-  const handleSave = useCallback(() => {
-    identifiedStamps.forEach((partialStamp) => {
-      const fullStamp: Stamp = {
-        id: partialStamp.id || `stamp-${Date.now()}-${Math.random()}`,
-        userId: 'mock-user',
-        imageUrl: partialStamp.imageUrl || '/mock/stamps/no-image.svg',
-        thumbnailUrl: partialStamp.imageUrl || '/mock/stamps/no-image.svg',
-        identification: {
-          country: partialStamp.identification?.country ?? 'Unknown',
-          year: partialStamp.identification?.year ?? null,
-          denomination: partialStamp.identification?.denomination ?? null,
-          scottNumber: partialStamp.identification?.scottNumber ?? null,
-          michelNumber: partialStamp.identification?.michelNumber ?? null,
-          description: partialStamp.identification?.description ?? 'Stamp',
-          condition: partialStamp.identification?.condition ?? 'unknown',
-          rarity: partialStamp.identification?.rarity ?? 'common',
-          color: partialStamp.identification?.color ?? null,
-          perforation: partialStamp.identification?.perforation ?? null,
-          watermark: partialStamp.identification?.watermark ?? null,
-          series: partialStamp.identification?.series ?? null,
-          confidence: partialStamp.identification?.confidence ?? 0.5,
-          status: 'identified',
-        },
-        pricing: partialStamp.pricing ?? {
-          estimatedValue: 0,
-          currency: 'USD',
-          confidence: 0.5,
-          sources: [],
-          priceRange: { min: 0, max: 0 },
-          lastUpdated: new Date().toISOString(),
-          hipValue: null,
-          sourceBreakdown: { hipstamp: null, ebay: null, delcampe: null, stampworld: null },
-        },
-        priceHistory: partialStamp.priceHistory ?? [],
-        notes: partialStamp.notes ?? '',
-        tags: partialStamp.tags ?? [],
-        isFavorite: partialStamp.isFavorite ?? false,
-        purchasePrice: partialStamp.purchasePrice ?? null,
-        purchaseDate: partialStamp.purchaseDate ?? null,
-        grade: partialStamp.grade ?? null,
-        createdAt: partialStamp.createdAt ?? new Date().toISOString(),
-        updatedAt: partialStamp.updatedAt ?? new Date().toISOString(),
-      };
-      addStamp(fullStamp);
-    });
-    router.push('/collection');
-  }, [identifiedStamps, addStamp, router]);
+  /* ── Save ──────────────────────────────────────────────────────────────── */
 
-  /* Update stamp metadata */
-  const handleUpdateStamp = useCallback((index: number, updated: Partial<Stamp>) => {
-    setIdentifiedStamps((prev) => {
-      const copy = [...prev];
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    const now = new Date().toISOString();
+    try {
+      for (const partial of identified) {
+        // A real thumbnail. Previously the full multi-MB crop data URL was
+        // stored in BOTH imageUrl and thumbnailUrl, which blew Safari's ~5MB
+        // localStorage quota after two or three photos — and zustand's persist
+        // middleware swallowed the QuotaExceededError, so the app navigated
+        // away and the stamps were simply gone on reload.
+        const thumbnailUrl = partial.imageUrl
+          ? await makeThumbnail(partial.imageUrl)
+          : '/mock/stamps/no-image.svg';
+        addStamp(toFullStamp(partial, { userId: 'local', thumbnailUrl, now }));
+      }
+      session.reset();
+      router.push('/collection');
+    } catch (err) {
+      // Stay put and keep the results. Never navigate away from unsaved work.
+      addToast({
+        type: 'error',
+        title: 'Could not save your stamps',
+        message: `${err instanceof Error ? err.message : 'Unknown error'}. Nothing was lost — try again.`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [identified, addStamp, session, router, addToast]);
+
+  const handleUpdateStamp = useCallback(
+    (index: number, updated: Partial<Stamp>) => {
+      const copy = [...identified];
       copy[index] = updated;
-      return copy;
-    });
-  }, []);
+      session.setIdentified(copy);
+    },
+    [identified, session],
+  );
 
-  /* Delete stamp from queue */
-  const handleDeleteStamp = useCallback((index: number) => {
-    setIdentifiedStamps((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const handleDeleteStamp = useCallback(
+    (index: number) => {
+      session.setIdentified(identified.filter((_, i) => i !== index));
+    },
+    [identified, session],
+  );
 
-  /* Cancel */
   const handleCancel = useCallback(() => {
-    setCurrentStep('upload');
-    setUploadedFiles([]);
-    setDetectedStamps([]);
-    setIdentifiedStamps([]);
-    setCurrentIdentificationIndex(0);
-  }, []);
+    abortRef.current?.abort();
+    session.reset();
+  }, [session]);
 
-  /* Go back */
   const handleBack = useCallback(() => {
-    switch (currentStep) {
-      case 'segmentation':
-        animateTransition('upload');
-        break;
-      case 'review':
-        animateTransition('segmentation');
-        break;
-      case 'identification':
-        animateTransition('review');
-        break;
-      case 'complete':
-        animateTransition('review');
-        break;
-      default:
-        break;
-    }
-  }, [currentStep, animateTransition]);
+    if (step === 'select') animateTransition('upload');
+    else if (step === 'identification') handleCancelIdentification();
+    else if (step === 'complete') animateTransition('select');
+  }, [step, animateTransition, handleCancelIdentification]);
 
+  /* Selection-step callbacks, bound to the store. */
+  const handleAdjust = useCallback((id: string, box: BoundingBox) => session.adjust(id, box), [session]);
+  const handleAddBox = useCallback((box: BoundingBox) => session.addBox(box), [session]);
 
-
-  /* Confirmed count */
-  const confirmedCount = detectedStamps.filter((s) => s.confirmed).length;
+  if (!hasHydrated) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>Upload Stamps</h1>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Upload Stamps</h1>
 
-      {mockModeDetected && (
-        <div
-          role="alert"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            margin: '0 auto 20px',
-            maxWidth: 720,
-            padding: '12px 16px',
-            borderRadius: 12,
-            background: 'rgba(251, 191, 36, 0.08)',
-            border: '1px solid rgba(251, 191, 36, 0.35)',
-            color: '#fbbf24',
-            fontSize: 13,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <span>
-            <strong>Simulated results.</strong> The AI identification key isn&apos;t configured, so these
-            identifications are sample data — not real analysis. Add a Google/Gemini API key in Settings to enable live identification.
-          </span>
-        </div>
-      )}
-
-      {/* Step Indicator */}
       <div className={styles.steps}>
-        {STEPS.map((step, index) => {
+        {STEPS.map((s, index) => {
           const isCompleted = index < stepIndex;
           const isActive = index === stepIndex;
-
-          let circleClass = styles.stepCirclePending;
-          let labelClass = styles.stepLabelPending;
-
-          if (isCompleted) {
-            circleClass = styles.stepCircleCompleted;
-            labelClass = styles.stepLabelCompleted;
-          } else if (isActive) {
-            circleClass = styles.stepCircleActive;
-            labelClass = styles.stepLabelActive;
-          }
+          const circleClass = isCompleted
+            ? styles.stepCircleCompleted
+            : isActive
+              ? styles.stepCircleActive
+              : styles.stepCirclePending;
+          const labelClass = isCompleted
+            ? styles.stepLabelCompleted
+            : isActive
+              ? styles.stepLabelActive
+              : styles.stepLabelPending;
 
           return (
-            <React.Fragment key={step.key}>
+            <React.Fragment key={s.key}>
               {index > 0 && (
                 <div
                   className={
-                    isCompleted || isActive
-                      ? styles.connectorCompleted
-                      : styles.connectorPending
+                    isCompleted || isActive ? styles.connectorCompleted : styles.connectorPending
                   }
                 />
               )}
-              <div className={styles.step}>
-                <div className={circleClass}>
-                  {isCompleted ? '✓' : index + 1}
-                </div>
-                <span className={labelClass}>{step.label}</span>
+              <div className={styles.step} aria-current={isActive ? 'step' : undefined}>
+                <div className={circleClass}>{isCompleted ? '✓' : index + 1}</div>
+                <span className={labelClass}>{s.label}</span>
               </div>
             </React.Fragment>
           );
         })}
       </div>
 
-      {/* Step Content */}
       <div className={styles.content} ref={contentRef}>
-        {currentStep === 'upload' && (
+        {step === 'upload' && (
           <div className={styles.stepContent}>
             <DropZone onFilesSelected={handleFilesSelected} />
-            {uploadedFiles.length > 0 && (
-              <div className={styles.modeSelection}>
-                <span className={styles.modeLabel}>Upload Mode</span>
-                <div className={styles.modeButtons}>
-                  <button
-                    type="button"
-                    className={uploadMode === 'sheet' ? styles.modeButtonActive : styles.modeButton}
-                    onClick={() => setUploadMode('sheet')}
-                  >
-                    🔍 Sheet Mode (Crop stamps from album page)
+
+            {segmentError && (
+              <div className={styles.errorPanel} role="alert">
+                <p className={styles.errorText}>{describeSegmentFailure(segmentError)}</p>
+                <div className={styles.errorActions}>
+                  <button type="button" className={styles.errorBtn} onClick={handleProceedToSelect}>
+                    Try again
                   </button>
-                  <button
-                    type="button"
-                    className={uploadMode === 'batch' ? styles.modeButtonActive : styles.modeButton}
-                    onClick={() => setUploadMode('batch')}
-                  >
-                    📦 Batch Mode (Process individual photos)
+                  <button type="button" className={styles.errorBtn} onClick={handleDrawMyself}>
+                    Draw the box myself
                   </button>
                 </div>
               </div>
             )}
-            {uploadedFiles.length > 0 && (
+
+            {files.length > 0 && (
+              <div className={styles.modeSelection}>
+                <span className={styles.modeLabel} id="upload-mode-label">
+                  Upload Mode
+                </span>
+                <div className={styles.modeButtons} role="radiogroup" aria-labelledby="upload-mode-label">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === 'sheet'}
+                    className={mode === 'sheet' ? styles.modeButtonActive : styles.modeButton}
+                    onClick={() => session.setMode('sheet')}
+                  >
+                    🔍 Sheet — find stamps in one photo
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === 'batch'}
+                    className={mode === 'batch' ? styles.modeButtonActive : styles.modeButton}
+                    onClick={() => session.setMode('batch')}
+                  >
+                    📦 Batch — one stamp per photo
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {files.length > 0 && (
               <div className={styles.nav}>
                 <div />
-                <GoldButton onClick={handleProceedToSegmentation} loading={isDetecting}>
-                  {isDetecting ? 'Processing...' : (uploadMode === 'batch' ? 'Process Batch →' : 'Detect Stamps →')}
+                <GoldButton onClick={handleProceedToSelect} loading={isDetecting}>
+                  {isDetecting
+                    ? (cropProgress ?? 'Finding stamps…')
+                    : mode === 'batch'
+                      ? 'Prepare photos →'
+                      : 'Find stamps →'}
                 </GoldButton>
               </div>
             )}
           </div>
         )}
 
-        {currentStep === 'segmentation' && (
+        {step === 'select' && (
           <div className={styles.stepContent}>
-            <SegmentationOverlay
-              imageUrl={previewUrl}
-              detectedStamps={detectedStamps}
-              onAdjust={handleAdjustBox}
+            <StampSelectStep
+              mode={mode}
+              imageUrl={sheetImageDataUrl}
+              detections={detections}
+              canUndo={session.canUndo()}
+              busy={isDetecting}
+              busyLabel={cropProgress ?? undefined}
+              onToggle={session.toggle}
+              onSelectAll={session.selectAll}
+              onSelectNone={session.selectNone}
+              onAdjust={handleAdjust}
+              onAddBox={handleAddBox}
+              onRemoveBox={session.removeBox}
+              onGestureStart={session.pushHistory}
+              onUndo={session.undo}
+              onBack={handleBack}
+              onContinue={handleIdentify}
             />
-            <div className={styles.nav}>
-              <button
-                className={styles.navBackBtn}
-                onClick={handleBack}
-                type="button"
-              >
-                ← Back
-              </button>
-              <GoldButton onClick={handleProceedToReview}>
-                Review {detectedStamps.length} Stamps →
-              </GoldButton>
-            </div>
           </div>
         )}
 
-        {currentStep === 'review' && (
-          <div className={styles.stepContent}>
-            <ReviewGrid
-              stamps={detectedStamps}
-              onConfirm={handleConfirm}
-              onReject={handleReject}
-            />
-            <div className={styles.nav}>
-              <button
-                className={styles.navBackBtn}
-                onClick={handleBack}
-                type="button"
-              >
-                ← Back
-              </button>
-              <GoldButton
-                onClick={handleProceedToIdentification}
-                disabled={confirmedCount === 0}
-              >
-                Identify {confirmedCount} Stamps →
-              </GoldButton>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'identification' && (
+        {step === 'identification' && (
           <div className={styles.stepContent}>
             <IdentificationProgress
-              stamps={detectedStamps.filter((s) => s.confirmed)}
-              identifiedStamps={identifiedStamps}
-              currentIndex={currentIdentificationIndex}
+              stamps={selected}
+              identifiedStamps={identified}
+              currentIndex={identifyIndex}
             />
+            <div className={styles.nav}>
+              <button type="button" className={styles.navBackBtn} onClick={handleCancelIdentification}>
+                Cancel
+              </button>
+              <div />
+            </div>
           </div>
         )}
 
-        {currentStep === 'complete' && (
+        {step === 'complete' && (
           <div className={styles.stepContent}>
             <UploadSummary
-              stamps={identifiedStamps}
+              stamps={identified}
               onSave={handleSave}
               onCancel={handleCancel}
               onUpdateStamp={handleUpdateStamp}
               onDeleteStamp={handleDeleteStamp}
             />
+            {isSaving && <p className={styles.savingNote}>Saving your stamps…</p>}
           </div>
         )}
       </div>
