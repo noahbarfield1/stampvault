@@ -276,6 +276,7 @@
 }
 
 .sourcePill {
+  composes: touchTarget from global;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -316,6 +317,7 @@
 }
 
 .cancelButton {
+  composes: touchTarget from global;
   background: transparent;
   color: var(--color-text-secondary);
   border: 1px solid var(--color-glass-border);
@@ -343,6 +345,7 @@
 }
 
 .actionBtn {
+  composes: touchTarget from global;
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
@@ -472,6 +475,7 @@
 }
 
 .swapBtn {
+  composes: touchTarget from global;
   font-family: inherit;
   font-size: var(--font-xs);
   font-weight: 600;

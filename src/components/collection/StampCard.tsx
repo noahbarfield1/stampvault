@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useStampsStore } from '@/store/stamps';
@@ -68,6 +68,13 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
   const removeStamp = useStampsStore((s) => s.removeStamp);
   const addToast = useUIStore((s) => s.addToast);
   const [hovered, setHovered] = useState(false);
+  /* On a touch device there is no hover, so view/edit/delete were
+     completely unreachable — the card had no other route to them.
+     Render them unconditionally when the pointer is coarse. */
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  }, []);
   const [imgError, setImgError] = useState(false);
   const { identification, pricing, isFavorite } = stamp;
 
@@ -88,7 +95,7 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
       {isFavorite && <span className={styles.favorite}>⭐</span>}
 
       {/* Quick Actions */}
-      {hovered && (
+      {(hovered || isTouch) && (
         <motion.div
           className={styles.quickActions}
           initial={{ opacity: 0, x: 8 }}

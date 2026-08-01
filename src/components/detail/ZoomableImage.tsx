@@ -203,6 +203,10 @@ export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
       <div
         ref={containerRef}
         className={styles.container}
+        /* Driven from state. At scale 1 the page must still scroll: this image
+           is the first element on the detail page, so an unconditional
+           `touch-action: none` made the whole page feel frozen to a first swipe. */
+        style={{ touchAction: scale > 1 ? 'none' : 'pan-y' }}
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}

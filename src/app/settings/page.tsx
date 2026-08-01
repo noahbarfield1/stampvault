@@ -8,6 +8,7 @@ import styles from './settings.module.css';
 import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
 import type { Stamp } from '@/types/stamp';
+import { usePageChrome } from '@/hooks/usePageChrome';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -97,6 +98,7 @@ const SECTIONS: SectionConfig[] = [
 /* ─── Component ──────────────────────────────────────────────────────── */
 
 export default function SettingsPage() {
+  usePageChrome({ title: 'Settings', backHref: '/dashboard' });
   const stamps = useStampsStore((s) => s.stamps);
   const setStamps = useStampsStore((s) => s.setStamps);
   const addStamp = useStampsStore((s) => s.addStamp);

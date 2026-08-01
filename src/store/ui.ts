@@ -90,6 +90,44 @@ interface UIState {
   prevTourStep: () => void;
   endTour: () => void;
   setTourDisabled: (disabled: boolean) => void;
+
+  /* ── Page chrome ─────────────────────────────────────────────────────
+   *  Set by each page via usePageChrome() and read by the Header, so every
+   *  screen gets a title and a back affordance without prop-drilling through
+   *  the layout. `onBack` has to be a callback rather than just an href
+   *  because /upload is a wizard whose back must walk its own steps —
+   *  router.back() there would exit the flow and destroy work in progress.
+   * ────────────────────────────────────────────────────────────────── */
+  pageChrome: PageChrome | null;
+  setPageChrome: (chrome: PageChrome | null) => void;
+
+  /* ── More sheet ──────────────────────────────────────────────────── */
+  moreSheetOpen: boolean;
+  setMoreSheetOpen: (open: boolean) => void;
+
+  /* ── Dismissible hints ───────────────────────────────────────────────
+   *  One-time contextual suggestions. Persisted, so a hint the user has
+   *  dismissed never comes back and nothing nags on every visit.
+   * ────────────────────────────────────────────────────────────────── */
+  dismissedHints: string[];
+  dismissHint: (id: string) => void;
+  isHintDismissed: (id: string) => boolean;
+  resetHints: () => void;
+}
+
+export interface ChromeAction {
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+}
+
+export interface PageChrome {
+  title?: string;
+  /** Where back goes, when it is a plain navigation. */
+  backHref?: string;
+  /** Overrides backHref for flows that manage their own history. */
+  onBack?: () => void;
+  actions?: ChromeAction[];
 }
 
 /* ─── Toast Type ─────────────────────────────────────────────────────── */
@@ -303,6 +341,28 @@ export const useUIStore = create<UIState>()(
         prevTourStep: () => set((state) => ({ tourStep: Math.max(0, state.tourStep - 1) }), false, 'prevTourStep'),
         endTour: () => set({ tourActive: false, tourStep: 0 }, false, 'endTour'),
         setTourDisabled: (disabled) => set({ tourDisabled: disabled }, false, 'setTourDisabled'),
+
+        /* ── Page chrome ─────────────────────────────────────────────── */
+        pageChrome: null,
+        setPageChrome: (chrome) => set({ pageChrome: chrome }, false, 'setPageChrome'),
+
+        /* ── More sheet ──────────────────────────────────────────────── */
+        moreSheetOpen: false,
+        setMoreSheetOpen: (open) => set({ moreSheetOpen: open }, false, 'setMoreSheetOpen'),
+
+        /* ── Dismissible hints ───────────────────────────────────────── */
+        dismissedHints: [],
+        dismissHint: (id) =>
+          set(
+            (state) =>
+              state.dismissedHints.includes(id)
+                ? state
+                : { dismissedHints: [...state.dismissedHints, id] },
+            false,
+            'dismissHint',
+          ),
+        isHintDismissed: (id) => get().dismissedHints.includes(id),
+        resetHints: () => set({ dismissedHints: [] }, false, 'resetHints'),
       }),
       {
         name: 'stampvault-ui',
@@ -312,6 +372,8 @@ export const useUIStore = create<UIState>()(
           viewMode: state.viewMode,
           theme: state.theme,
           tourDisabled: state.tourDisabled,
+          // Persisted so a dismissed suggestion stays dismissed across visits.
+          dismissedHints: state.dismissedHints,
         }),
       }
     ),

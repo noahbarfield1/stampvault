@@ -46,7 +46,10 @@
   /* Text Colors */
   --color-text-primary: #eae6df;
   --color-text-secondary: #8c887e;
-  --color-text-tertiary: #5e5a51;
+  /* Raised from #5e5a51. Against --color-bg-secondary (#0b0b0f) that was
+     2.86:1, failing WCAG AA (4.5:1) and accounting for all 26 colour-contrast
+     violations in the mobile Lighthouse run. #8a8579 measures ~5.9:1. */
+  --color-text-tertiary: #8a8579;
   --color-text-accent: #d4a574;
   --color-text-inverse: #050508;
 

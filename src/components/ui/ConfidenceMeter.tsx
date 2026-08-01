@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Tooltip } from './InfoHint';
 import styles from './ConfidenceMeter.module.css';
 
 export interface ConfidenceMeterProps {
@@ -14,6 +15,8 @@ export interface ConfidenceMeterProps {
   glow?: boolean;
   /** Additional custom class names */
   className?: string;
+  /** Show a tappable "?" explaining what the number means. */
+  explain?: boolean;
 }
 
 export default function ConfidenceMeter({
@@ -22,6 +25,7 @@ export default function ConfidenceMeter({
   showText = true,
   glow = true,
   className = '',
+  explain = false,
 }: ConfidenceMeterProps) {
   // Normalize confidence to 0-100 percentage
   const percentage = confidence <= 1 ? confidence * 100 : confidence;
@@ -53,11 +57,19 @@ export default function ConfidenceMeter({
         <div className={styles.textRow}>
           <span className={styles.percentText}>{rounded}%</span>
           {label && <span className={styles.labelText}>{label}</span>}
+          {explain && (
+            <Tooltip label="What does this confidence score mean?" title="AI confidence">
+              How sure the model is that it read this stamp correctly. Below 50% treat it as a
+              suggestion and check the catalog number yourself.
+            </Tooltip>
+          )}
         </div>
       )}
       <div
         className={styles.track}
         role="progressbar"
+        aria-label={label || 'Confidence'}
+        aria-valuetext={`${rounded} percent`}
         aria-valuenow={rounded}
         aria-valuemin={0}
         aria-valuemax={100}

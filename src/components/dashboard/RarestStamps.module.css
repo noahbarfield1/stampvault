@@ -141,7 +141,7 @@
 
 .conditionBadge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);

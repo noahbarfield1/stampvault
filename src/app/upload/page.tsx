@@ -13,6 +13,7 @@ import StampSelectStep from '@/components/upload/select/StampSelectStep';
 import IdentificationProgress from '@/components/upload/IdentificationProgress';
 import UploadSummary from '@/components/upload/UploadSummary';
 import GoldButton from '@/components/ui/GoldButton';
+import { DismissibleHint } from '@/components/ui/InfoHint';
 import {
   resizeImageForUpload,
   createCropper,
@@ -24,6 +25,7 @@ import {
 import { segmentImage, describeSegmentFailure, type SegmentOutcome } from '@/lib/upload/segment-client';
 import { identifyStamp, isIdentified, lookupPricing } from '@/lib/upload/identify-client';
 import { buildIdentifiedStamp, buildFailedStamp, toFullStamp } from '@/lib/upload/to-stamp';
+import { usePageChrome } from '@/hooks/usePageChrome';
 import styles from './upload.module.css';
 
 export default function UploadPage() {
@@ -354,6 +356,21 @@ export default function UploadPage() {
     else if (step === 'complete') animateTransition('select');
   }, [step, animateTransition, handleCancelIdentification]);
 
+  /* Header chrome. `onBack` rather than a backHref: this is a wizard, so back
+     must walk its own steps. router.back() would leave the flow entirely and
+     discard work in progress. */
+  usePageChrome(
+    {
+      title: STEPS[stepIndex]?.label ? `Upload · ${STEPS[stepIndex].label}` : 'Upload',
+      onBack: step === 'upload' ? undefined : handleBack,
+      actions:
+        step === 'upload'
+          ? undefined
+          : [{ label: 'Discard this upload', destructive: true, onSelect: handleCancel }],
+    },
+    [step, stepIndex, handleBack, handleCancel],
+  );
+
   /* Selection-step callbacks, bound to the store. */
   const handleAdjust = useCallback((id: string, box: BoundingBox) => session.adjust(id, box), [session]);
   const handleAddBox = useCallback((box: BoundingBox) => session.addBox(box), [session]);
@@ -406,6 +423,19 @@ export default function UploadPage() {
       <div className={styles.content} ref={contentRef}>
         {step === 'upload' && (
           <div className={styles.stepContent}>
+            <div className={styles.hintSlot}>
+              <DismissibleHint
+                id="upload-mode-explainer"
+                title="One photo of many stamps, or many photos?"
+                icon="📷"
+                action={{ label: 'See the full guide', href: '/tutorial' }}
+              >
+                Pick <strong>Sheet</strong> to photograph a whole album page and have each stamp
+                found for you. Pick <strong>Batch</strong> if you have already shot them one at a
+                time. You can change your mind below before continuing.
+              </DismissibleHint>
+            </div>
+
             <DropZone onFilesSelected={handleFilesSelected} />
 
             {segmentError && (

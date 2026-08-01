@@ -6,7 +6,10 @@
   border: 1px solid var(--color-glass-border);
   cursor: grab;
   user-select: none;
-  touch-action: none;
+  /* touch-action is set from state in the component: `pan-y` at scale 1 so
+     the page still scrolls, `none` only once the user has zoomed in. It was
+     unconditionally `none`, which made the whole detail page feel frozen —
+     this image is the first element on it. */
 }
 
 .container:active {
@@ -33,6 +36,7 @@
 }
 
 .controlBtn {
+  composes: touchTarget from global;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -78,7 +82,9 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.9);
-  z-index: var(--z-modal-backdrop);
+  /* Above --z-mobile-nav (900), or the tab bar renders on top of the
+     supposedly fullscreen viewer. */
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,6 +107,7 @@
 }
 
 .fullscreenClose {
+  composes: touchTarget from global;
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
@@ -116,7 +123,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-modal);
+  z-index: 1001;
   transition: background var(--transition-fast);
 }
 

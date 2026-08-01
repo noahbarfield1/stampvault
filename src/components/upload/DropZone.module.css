@@ -265,6 +265,9 @@
 }
 
 .previewRemove {
+  /* Revealed on touch via [data-touch-reveal] in styles/touch.css: this was
+     opacity:0 until :hover, i.e. invisible but still tappable on a phone. */
+  composes: touchTarget from global;
   position: absolute;
   top: var(--space-1);
   right: var(--space-1);

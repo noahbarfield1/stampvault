@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, type FormEvent } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
 import { useStampsStore } from '@/store/stamps';
@@ -13,6 +14,7 @@ const routeTitles: Record<string, string> = {
   '/prices': 'Price Tracker',
   '/assistant': 'AI Assistant',
   '/settings': 'Settings',
+  '/tutorial': 'How it works',
 };
 
 export function Header() {
@@ -22,8 +24,10 @@ export function Header() {
   const globalSearchQuery = useUIStore((s) => s.globalSearchQuery);
   const setGlobalSearchQuery = useUIStore((s) => s.setGlobalSearchQuery);
   const startTour = useUIStore((s) => s.startTour);
+  const pageChrome = useUIStore((s) => s.pageChrome);
+  const setMoreOpen = useUIStore((s) => s.setMoreSheetOpen);
 
-  const pageTitle = useMemo(() => {
+  const routeTitle = useMemo(() => {
     for (const [route, title] of Object.entries(routeTitles)) {
       if (pathname === route || pathname.startsWith(route + '/')) {
         return title;
@@ -31,6 +35,11 @@ export function Header() {
     }
     return 'Perdue Stamp Vault';
   }, [pathname]);
+
+  // A page can override the route-derived title (e.g. the upload wizard shows
+  // its current step) via usePageChrome().
+  const pageTitle = pageChrome?.title ?? routeTitle;
+  const showBack = Boolean(pageChrome?.onBack || pageChrome?.backHref);
 
   const runSearch = () => {
     useStampsStore.getState().setFilters({ search: globalSearchQuery.trim() });
@@ -46,8 +55,27 @@ export function Header() {
     <header
       className={`${styles.header} ${collapsed ? styles.headerCollapsed : ''}`}
     >
-      {/* Left: Page Title */}
+      {/* Left: contextual back + page title */}
       <div className={styles.titleSection}>
+        {showBack &&
+          (pageChrome?.onBack ? (
+            <button
+              type="button"
+              className={styles.backButton}
+              onClick={pageChrome.onBack}
+              aria-label="Go back"
+            >
+              ←
+            </button>
+          ) : (
+            <Link
+              href={pageChrome!.backHref!}
+              className={styles.backButton}
+              aria-label="Go back"
+            >
+              ←
+            </Link>
+          ))}
         <h1 className={styles.pageTitle}>{pageTitle}</h1>
       </div>
 
@@ -108,6 +136,29 @@ export function Header() {
             <circle cx="12" cy="12" r="10" />
             <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+
+        {/* Overflow. On desktop this is the only route to the More sheet, since
+            the mobile tab bar is hidden above 860px. */}
+        <button
+          className={styles.iconButton}
+          onClick={() => setMoreOpen(true)}
+          aria-label="More options"
+          aria-haspopup="dialog"
+          title="More"
+        >
+          <svg
+            className={styles.iconButtonSvg}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="5" cy="12" r="1" fill="currentColor" />
+            <circle cx="12" cy="12" r="1" fill="currentColor" />
+            <circle cx="19" cy="12" r="1" fill="currentColor" />
           </svg>
         </button>
       </div>

@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useUIStore } from '@/store/ui';
 import styles from './MobileNav.module.css';
 
 interface MobileTab {
@@ -49,19 +50,23 @@ const tabs: MobileTab[] = [
       </svg>
     ),
   },
-  {
-    href: '/assistant',
-    label: 'AI',
-    icon: (
-      <svg className={styles.tabIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    ),
-  },
 ];
+
+/* AI moved into the More sheet rather than losing a tab: /assistant is a
+   destination reachable in one extra tap, whereas /settings previously had NO
+   route at all on a phone. A sixth tab would squeeze every target to ~60px on
+   a 360px screen. */
+const MORE_ICON = (
+  <svg className={styles.tabIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="4" y1="8" x2="20" y2="8" />
+    <line x1="4" y1="16" x2="20" y2="16" />
+  </svg>
+);
 
 export function MobileNav() {
   const pathname = usePathname();
+  const moreOpen = useUIStore((s) => s.moreSheetOpen);
+  const setMoreOpen = useUIStore((s) => s.setMoreSheetOpen);
 
   return (
     <nav className={styles.mobileNav} aria-label="Mobile navigation">
@@ -95,6 +100,18 @@ export function MobileNav() {
           </Link>
         );
       })}
+
+      <button
+        type="button"
+        className={`${styles.tab} ${moreOpen ? styles.tabActive : ''}`}
+        onClick={() => setMoreOpen(!moreOpen)}
+        aria-expanded={moreOpen}
+        aria-haspopup="dialog"
+      >
+        <span className={styles.tabIcon}>{MORE_ICON}</span>
+        <span className={styles.tabLabel}>More</span>
+        {moreOpen && <span className={styles.tabDot} />}
+      </button>
     </nav>
   );
 }

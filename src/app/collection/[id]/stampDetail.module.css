@@ -230,3 +230,23 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-glass-border);
 }
+
+/* Explicit link under the catalog reference. Previously the whole zoomable
+   image was wrapped in this anchor, so pinching to inspect a stamp navigated
+   away to hipstamp.com. */
+.referenceLink {
+  composes: touchTarget from global;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-glass-border);
+  background: transparent;
+  color: var(--color-text-accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.referenceLink:hover {
+  border-color: var(--color-accent-gold);
+}

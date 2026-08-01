@@ -4,6 +4,7 @@ import { useUIStore } from '@/store/ui';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileNav } from '@/components/layout/MobileNav';
+import MoreSheet from '@/components/layout/MoreSheet';
 import ChatPanel from '@/components/chat/ChatPanel';
 import GuidedTour from '@/components/layout/GuidedTour';
 import { ToastContainer } from '@/components/ui/ToastContainer';
@@ -28,6 +29,7 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
       <MobileNav />
+      <MoreSheet />
       <ChatPanel />
       <GuidedTour />
       <ToastContainer />

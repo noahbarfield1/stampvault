@@ -121,6 +121,7 @@ export default function UploadSummary({
                     confidence={stamp.identification.confidence}
                     label="Match"
                     className={styles.cardConfidenceMeter}
+                    explain
                   />
                 )}
               </div>

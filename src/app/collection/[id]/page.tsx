@@ -14,12 +14,14 @@ import SimilarStamps from '@/components/detail/SimilarStamps';
 import ConditionComparison from '@/components/detail/ConditionComparison';
 import StampPdfExport from '@/components/detail/StampPdfExport';
 import styles from './stampDetail.module.css';
+import { usePageChrome } from '@/hooks/usePageChrome';
 
 interface StampDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function StampDetailPage({ params }: StampDetailPageProps) {
+  usePageChrome({ title: 'Stamp', backHref: '/collection' });
   const { id } = use(params);
   const openChat = useUIStore((s) => s.openChat);
   const addToast = useUIStore((s) => s.addToast);
@@ -283,17 +285,22 @@ export default function StampDetailPage({ params }: StampDetailPageProps) {
               </div>
               <div className={styles.imageColumn}>
                 <span className={styles.imageBadge}>Catalog Reference</span>
+                {/* Deliberately NOT wrapped in an anchor. Any pinch, pan or
+                    double-tap on a zoomable image ends in a click, which would
+                    navigate off-site and lose the user's place. The link is a
+                    separate, explicit control below the image — which also
+                    gives it a real accessible name. */}
+                <ZoomableImage
+                  src={stamp.identification.referenceImageUrl}
+                  alt="Catalog Reference"
+                />
                 <a
+                  className={styles.referenceLink}
                   href={`https://www.hipstamp.com/search?q=${encodeURIComponent((stamp.identification.country || '') + ' ' + (stamp.identification.scottNumber || ''))}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'block', textDecoration: 'none' }}
-                  title="View catalog reference on Hipstamp"
                 >
-                  <ZoomableImage
-                    src={stamp.identification.referenceImageUrl}
-                    alt="Catalog Reference"
-                  />
+                  View on HipStamp ↗
                 </a>
               </div>
             </div>

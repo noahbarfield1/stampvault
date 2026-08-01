@@ -3,6 +3,7 @@
 import React from 'react';
 import type { Stamp, PriceSource, PriceBasis } from '@/types/stamp';
 import ConfidenceMeter from '@/components/ui/ConfidenceMeter';
+import { Tooltip } from '@/components/ui/InfoHint';
 import styles from './PricingPanel.module.css';
 
 const TIER_HEADING: Record<PriceBasis['tier'], string> = {
@@ -132,7 +133,12 @@ export default function PricingPanel({
           </span>
         )}
         <p className={styles.valueLabel}>
-          {basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}
+          {basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}{' '}
+          <Tooltip label="Where does this price come from?" title="Where this comes from">
+            An estimate aggregated from real eBay listings, with outliers removed. It is not an
+            appraisal — condition drives most of a stamp&rsquo;s value and a photo cannot judge
+            gum, thins or repairs.
+          </Tooltip>
         </p>
         <p className={styles.valueAmount}>
           {formatCurrency(pricing.estimatedValue)}
@@ -145,6 +151,7 @@ export default function PricingPanel({
           confidence={pricing.confidence}
           label="Confidence"
           className={styles.panelConfidenceMeter}
+          explain
         />
 
         {/* Proof: the actual listing behind the headline value */}

@@ -40,6 +40,7 @@
 }
 
 .viewAll {
+  composes: touchTarget from global;
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);

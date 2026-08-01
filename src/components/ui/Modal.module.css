@@ -71,6 +71,7 @@
 }
 
 .closeButton {
+  composes: touchTarget from global;
   display: flex;
   align-items: center;
   justify-content: center;

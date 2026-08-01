@@ -324,6 +324,7 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
               />
               <button
                 className={styles.previewRemove}
+                data-touch-reveal
                 onClick={() => removeFile(index)}
                 type="button"
                 aria-label={`Remove ${preview.file.name}`}

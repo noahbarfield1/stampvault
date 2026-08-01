@@ -16,7 +16,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'Dashboard Command Center',
     path: '/dashboard',
-    description: 'Welcome to PerdueStampVault! This screen displays your collection health metrics, total portfolio estimated value, recent additions, and your stamp distribution across historical eras.',
+    description: 'Welcome. This screen summarises your collection: how many stamps, what they are worth on current estimates, what you added recently, and how they spread across eras.',
   },
   {
     title: 'Smart Collection Browser',
@@ -26,17 +26,17 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'AI Upload & Crop Pipeline',
     path: '/upload',
-    description: 'Bulk upload album pages or individual photos. Our segmentation engine detects stamp boundaries, and our Gemini vision model matches them with Scott catalog photos side-by-side.',
+    description: 'Photograph a whole album page or one stamp at a time. Detected stamps arrive already selected — tap any you do not want, pinch to zoom, and press the pencil to fine-tune a box.',
   },
   {
     title: 'Live Price Tracker',
     path: '/prices',
-    description: 'Analyze value fluctuations over time. Review pricing details aggregated in real-time from eBay sold listings, active HipStamp listings, and historical auction values.',
+    description: 'Estimates are aggregated from real eBay listings scraped when you ask, with outliers removed and a link to every listing used. Values are a starting point, not an appraisal.',
   },
   {
     title: 'Conversational AI Assistant',
     path: '/assistant',
-    description: 'Interact with our context-aware stamp assistant. Ask questions about specific catalog numbers, grade certification requirements, or upload photos of mystery items.',
+    description: 'Ask about a catalog number, a grading question, or anything you are unsure of. Reachable any time from the More menu.',
   },
 ];
 

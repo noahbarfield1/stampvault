@@ -137,6 +137,7 @@
 }
 
 .navBackBtn {
+  composes: touchTarget from global;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -307,4 +308,9 @@
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+/* Wrapper so a dismissible hint sits clear of the dropzone above it. */
+.hintSlot {
+  margin-bottom: var(--space-4);
 }

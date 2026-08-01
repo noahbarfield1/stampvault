@@ -12,6 +12,7 @@ import FilterPresetBar from '@/components/collection/FilterPresetBar';
 import StampGrid from '@/components/collection/StampGrid';
 import StampTable from '@/components/collection/StampTable';
 import styles from './collection.module.css';
+import { usePageChrome } from '@/hooks/usePageChrome';
 
 /* ── Sort option labels ────────────────────────────────────────────────── */
 
@@ -27,6 +28,7 @@ const SORT_OPTIONS: { field: SortField; label: string }[] = [
 ];
 
 export default function CollectionPage() {
+  usePageChrome({ title: 'Collection' });
   const router = useRouter();
 
   const {

@@ -18,6 +18,8 @@ import CompletionTracker from '@/components/dashboard/CompletionTracker';
 import RecentUploads from '@/components/dashboard/RecentUploads';
 
 import styles from './dashboard.module.css';
+import { usePageChrome } from '@/hooks/usePageChrome';
+import { DismissibleHint } from '@/components/ui/InfoHint';
 
 /* ─── Helpers ────────────────────────────────────────────────────────── */
 
@@ -163,6 +165,7 @@ function SkeletonGrid() {
 /* ─── Dashboard Page ─────────────────────────────────────────────────── */
 
 export default function DashboardPage() {
+  usePageChrome({ title: 'Dashboard' });
   const router = useRouter();
   const storeStamps = useStampsStore((s) => s.stamps);
   const setStamps = useStampsStore((s) => s.setStamps);
@@ -484,6 +487,36 @@ export default function DashboardPage() {
           initial="hidden"
           animate="visible"
         >
+          {/* First-run guidance. Shows only while the collection is empty, and
+              only until dismissed — it never nags on repeat visits. */}
+          <motion.div variants={itemVariants} style={{ marginBottom: 'var(--space-5)' }}>
+            <DismissibleHint
+              id="dashboard-getting-started"
+              title="New here? Start with one photo."
+              icon="📷"
+              when={storeStamps.length === 0}
+              action={{ label: 'How it works', href: '/tutorial' }}
+            >
+              Photograph an album page and the app will find the individual stamps, identify them,
+              and look up what they actually sell for.
+            </DismissibleHint>
+          </motion.div>
+
+          {/* Once there is something to lose, suggest a backup. Everything is
+              stored in this browser, so this is a real risk, not a nudge. */}
+          <motion.div variants={itemVariants} style={{ marginBottom: 'var(--space-5)' }}>
+            <DismissibleHint
+              id="dashboard-backup-reminder"
+              title="Keep a backup of your collection"
+              icon="💾"
+              when={storeStamps.length >= 3}
+              action={{ label: 'Open More → Export', onSelect: () => useUIStore.getState().setMoreSheetOpen(true) }}
+            >
+              Your stamps live in this browser. Export a JSON copy now and again so a cleared cache
+              cannot take them with it.
+            </DismissibleHint>
+          </motion.div>
+
           {/* ─── Stat Cards Row ──────────────────────────────── */}
           <motion.div className={styles.statsRow} variants={itemVariants}>
             <StatCard

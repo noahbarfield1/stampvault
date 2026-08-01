@@ -6,6 +6,7 @@ import MessageBubble from '@/components/chat/MessageBubble';
 import VoiceButton from '@/components/chat/VoiceButton';
 import type { ChatMessage } from '@/types/chat';
 import styles from './assistant.module.css';
+import { usePageChrome } from '@/hooks/usePageChrome';
 
 /* ─── ID Generator ───────────────────────────────────────────────────── */
 
@@ -39,6 +40,7 @@ const FOLLOW_UPS = [
 /* ─── Component ──────────────────────────────────────────────────────── */
 
 export default function AssistantPage() {
+  usePageChrome({ title: 'AI Assistant', backHref: '/dashboard' });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);

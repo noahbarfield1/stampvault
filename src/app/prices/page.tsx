@@ -10,11 +10,13 @@ import GoldButton from '@/components/ui/GoldButton';
 import type { Stamp } from '@/types/stamp';
 import { useStampsStore } from '@/store/stamps';
 import styles from './prices.module.css';
+import { usePageChrome } from '@/hooks/usePageChrome';
 
 
 /* ─── Page Component ─────────────────────────────────────────────────── */
 
 export default function PricesPage() {
+  usePageChrome({ title: 'Price Tracker' });
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const storeStamps = useStampsStore((s) => s.stamps);

@@ -122,6 +122,7 @@
 }
 
 .iconButton {
+  composes: touchTarget from global;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,4 +197,34 @@
     padding: 0 var(--space-4);
     gap: var(--space-3);
   }
+}
+
+/* ── Contextual back ───────────────────────────────────────────────────────
+   Populated from the pageChrome slice, so every page can offer a back
+   affordance. Previously only /collection/[id] had one, and the header's only
+   control on mobile was the tour button. */
+.backButton {
+  composes: touchTarget from global;
+  flex: none;
+  margin-right: var(--space-1);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.backButton:hover,
+.backButton:focus-visible {
+  background: var(--color-glass);
+  border-color: var(--color-glass-border);
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
