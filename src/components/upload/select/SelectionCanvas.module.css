@@ -4,6 +4,10 @@
   border-radius: var(--radius-lg);
   background: var(--color-bg-primary);
   border: 1px solid var(--color-glass-border);
+  /* Centre the shrink-wrapped surface when the photo is narrower than the page. */
+  display: flex;
+  justify-content: center;
+  align-items: center;
   /* Vertical scrolling stays available until the user actually zooms in.
      The old code set `touch-action: none` unconditionally, which meant a swipe
      starting anywhere on the photo did nothing at all. */
@@ -18,19 +22,36 @@
 /* The transformed surface. Boxes are percentage children of this element, so
    they follow the zoom automatically and getBoundingClientRect() on it returns
    post-transform dimensions — which is what the gesture maths assumes. */
+/* Must shrink-wrap the image exactly. Boxes are percentage children of this
+   element, so any letterboxing between the surface and the photo would offset
+   every box. `width: fit-content` keeps the two identical at any aspect ratio. */
 .surface {
   position: relative;
+  width: fit-content;
+  max-width: 100%;
   transform-origin: center center;
   will-change: transform;
 }
 
+/* Bounded by height as well as width so the WHOLE photo is visible while
+   choosing stamps — you cannot select what you have to scroll to find.
+   Pinch-zoom is how you get in close, not page scroll. */
 .image {
-  width: 100%;
-  height: auto;
   display: block;
+  max-width: 100%;
+  max-height: 58dvh;
+  width: auto;
+  height: auto;
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
+}
+
+@media (max-width: 860px) {
+  .image {
+    /* Leave room for the sticky header, hint line and action bar. */
+    max-height: 52dvh;
+  }
 }
 
 /* ── Detection box ─────────────────────────────────────────────────────── */
