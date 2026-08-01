@@ -3,7 +3,11 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--mobile-nav-height);
+  /* The inset must be ADDED to the height, not just applied as padding. Under
+     the global `box-sizing: border-box`, `height: 68px` + `padding-bottom: 34px`
+     would shrink the content box to 34px and halve every tab target on a
+     home-indicator iPhone. */
+  height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
   background: var(--color-glass);
   backdrop-filter: var(--glass-blur-heavy);
   -webkit-backdrop-filter: var(--glass-blur-heavy);

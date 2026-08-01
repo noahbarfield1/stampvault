@@ -1,4 +1,5 @@
 @import './variables.css';
+@import './touch.css';
 
 /* ============================================
    Global Reset & Base Styles
@@ -16,8 +17,13 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
-  width: 100vw;
-  height: 100vh;
+  /* Deliberately NOT 100vw/100vh. `100vw` includes the scrollbar gutter, which
+     guarantees horizontal overflow on desktop; `100vh` on iOS refers to the
+     LARGE viewport, so content sits under the collapsing URL bar. */
+  width: 100%;
+  height: 100%;
+  /* Stop iOS from inflating text when a phone is rotated to landscape. */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -27,8 +33,10 @@ body {
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
-  min-height: 100vh;
-  width: 100vw;
+  /* dvh tracks the *dynamic* viewport, so the page does not jump as mobile
+     Safari's URL bar collapses. */
+  min-height: 100dvh;
+  width: 100%;
   margin: 0;
   overflow-x: hidden;
 }

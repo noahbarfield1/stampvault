@@ -1,0 +1,71 @@
+/* ============================================
+   Touch ergonomics
+   --------------------------------------------
+   This app is a phone-first tool: the primary loop is photographing a page of
+   stamps and picking which ones to keep, done one-handed.
+
+   CSS Modules hash their class names at build time, so a global stylesheet
+   cannot target `.confirmBtn` or `.previewRemove` directly. The two things that
+   CAN be expressed globally live here:
+
+     1. `.touchTarget`, consumed by modules via `composes: touchTarget from global`
+        so the 44px constant is defined exactly once.
+     2. Rules that key off elements or attributes rather than module classes.
+   ============================================ */
+
+/* ── Minimum hit area ──────────────────────────────────────────────────────
+   44x44 CSS px is the WCAG 2.5.5 / iOS HIG target. Applied via `composes:`
+   rather than duplicated across a dozen modules. */
+.touchTarget {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── iOS focus zoom ────────────────────────────────────────────────────────
+   Mobile Safari zooms the viewport when a form control smaller than 16px
+   receives focus, and does NOT zoom back out on blur. The design tokens are
+   below that threshold (--text-base is 15px, --text-sm is 13px), so every
+   input in the app triggers it.
+
+   Deliberately gated on WIDTH, not on `(pointer: coarse)`: iPadOS with a
+   trackpad or Magic Keyboard reports a fine pointer yet still zooms on focus. */
+@media (max-width: 860px) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, var(--text-base));
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* The default flat-grey tap flash reads as a rendering glitch against the
+     dark glass surfaces. Tint it to the app's gold accent instead. */
+  * {
+    -webkit-tap-highlight-color: rgba(212, 165, 116, 0.2);
+  }
+
+  /* Affordances that are revealed on :hover are unreachable on touch — and,
+     worse, several stay hit-testable while invisible, so they get triggered by
+     accident. Any element carrying this attribute stays visible on touch. */
+  [data-touch-reveal] {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────
+   The app runs GSAP step transitions, framer-motion springs and several
+   infinite glow/shimmer keyframes. Honour the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
