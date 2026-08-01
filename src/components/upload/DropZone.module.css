@@ -352,3 +352,13 @@
     font-size: var(--text-lg);
   }
 }
+
+/* HEIC conversion runs on the main thread and can take seconds on a large
+   photo. Without this the picker simply appeared to hang. */
+.convertingNote {
+  margin-top: var(--space-3);
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

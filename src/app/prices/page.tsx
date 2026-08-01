@@ -9,6 +9,7 @@ import SourceBreakdown from '@/components/prices/SourceBreakdown';
 import GoldButton from '@/components/ui/GoldButton';
 import type { Stamp } from '@/types/stamp';
 import { useStampsStore } from '@/store/stamps';
+import { useUIStore } from '@/store/ui';
 import styles from './prices.module.css';
 import { usePageChrome } from '@/hooks/usePageChrome';
 
@@ -19,6 +20,9 @@ export default function PricesPage() {
   usePageChrome({ title: 'Price Tracker' });
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState({ done: 0, total: 0 });
+  const updateStamp = useStampsStore((s) => s.updateStamp);
+  const addToast = useUIStore((s) => s.addToast);
   const storeStamps = useStampsStore((s) => s.stamps);
   
   const stamps = storeStamps;
@@ -180,10 +184,80 @@ export default function PricesPage() {
       .filter((d) => d.count > 0);
   }, [stamps]);
 
+  /**
+   * Refresh every priced stamp against live listings.
+   *
+   * This used to be `await new Promise(r => setTimeout(r, 2500))` — a spinner
+   * that called no API and refreshed nothing, while appearing to work.
+   *
+   * Concurrency is capped at 2: each lookup is a real Firecrawl scrape of eBay,
+   * costing credits and ~20s, so firing all of them at once would be both slow
+   * and expensive.
+   */
   const handleRefresh = async () => {
+    const targets = stamps.filter(
+      (s) =>
+        s.identification.country &&
+        s.identification.country !== 'Unknown' &&
+        s.identification.status !== 'failed',
+    );
+
+    if (targets.length === 0) {
+      addToast({
+        type: 'info',
+        title: 'Nothing to refresh',
+        message: 'No identified stamps in your collection yet.',
+      });
+      return;
+    }
+
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    setRefreshProgress({ done: 0, total: targets.length });
+
+    let updated = 0;
+    let failed = 0;
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < targets.length) {
+        const stamp = targets[cursor++];
+        try {
+          const res = await fetch('/api/pricing/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stampDescription: stamp.identification.description,
+              scottNumber: stamp.identification.scottNumber || undefined,
+              country: stamp.identification.country || undefined,
+              year: stamp.identification.year || undefined,
+              condition: stamp.identification.condition || undefined,
+              forceRefresh: true,
+            }),
+          });
+          if (!res.ok) throw new Error(String(res.status));
+          const { pricing } = await res.json();
+          if (pricing) {
+            updateStamp(stamp.id, { pricing });
+            updated++;
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+        setRefreshProgress((p) => ({ ...p, done: p.done + 1 }));
+      }
+    };
+
+    await Promise.all([worker(), worker()]);
+
     setIsRefreshing(false);
+    setRefreshProgress({ done: 0, total: 0 });
+    addToast({
+      type: failed > 0 ? 'warning' : 'success',
+      title: `Refreshed ${updated} of ${targets.length}`,
+      message: failed > 0 ? `${failed} could not be priced right now.` : undefined,
+    });
   };
 
   const handleStampClick = (stampId: string) => {
@@ -215,7 +289,9 @@ export default function PricesPage() {
             </svg>
           }
         >
-          {isRefreshing ? 'Refreshing…' : 'Refresh All Prices'}
+          {isRefreshing
+            ? `Refreshing ${refreshProgress.done} of ${refreshProgress.total}…`
+            : 'Refresh All Prices'}
         </GoldButton>
       </motion.div>
 

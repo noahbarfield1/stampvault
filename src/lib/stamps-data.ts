@@ -1,6 +1,16 @@
 import type { Stamp } from '@/types/stamp';
 import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 
+/**
+ * These timestamps were previously `new Date().toISOString()` evaluated at
+ * MODULE LOAD, so the app claimed these stamps were bought and added today —
+ * every day, forever — and "Recent Uploads" was always "today". A fixed date is
+ * the honest value for seeded records, and purchaseDate is null because nobody
+ * recorded one.
+ */
+const SEEDED_AT = '2026-06-21T00:00:00.000Z';
+
+
 export const initialStamps: Stamp[] = [
   {
     id: 'stamp-user-001',
@@ -18,7 +28,7 @@ export const initialStamps: Stamp[] = [
       confidence: 0.9,
       sources: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.sources.map(s => ({...s, condition: 'unknown'})),
       priceRange: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.priceRange,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: SEEDED_AT,
       hipValue: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.hipValue,
       sourceBreakdown: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.sourceBreakdown
     },
@@ -27,10 +37,10 @@ export const initialStamps: Stamp[] = [
     tags: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.tags,
     isFavorite: false,
     purchasePrice: 4.00,
-    purchaseDate: new Date().toISOString(),
+    purchaseDate: null,
     grade: VERIFIED_STAMPS.find(s => s.id === 'stamp-harrison')!.grade,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: SEEDED_AT,
+    updatedAt: SEEDED_AT
   },
   {
     id: 'stamp-user-004',
@@ -48,7 +58,7 @@ export const initialStamps: Stamp[] = [
       confidence: 0.85,
       sources: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.sources.map(s => ({...s, condition: 'unknown'})),
       priceRange: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.priceRange,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: SEEDED_AT,
       hipValue: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.hipValue,
       sourceBreakdown: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.sourceBreakdown
     },
@@ -57,10 +67,10 @@ export const initialStamps: Stamp[] = [
     tags: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.tags,
     isFavorite: false,
     purchasePrice: 0.15,
-    purchaseDate: new Date().toISOString(),
+    purchaseDate: null,
     grade: VERIFIED_STAMPS.find(s => s.id === 'stamp-washington-1c')!.grade,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: SEEDED_AT,
+    updatedAt: SEEDED_AT
   },
   {
     id: 'stamp-user-005',
@@ -78,7 +88,7 @@ export const initialStamps: Stamp[] = [
       confidence: 0.8,
       sources: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.sources.map(s => ({...s, condition: 'unknown'})),
       priceRange: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.priceRange,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: SEEDED_AT,
       hipValue: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.hipValue,
       sourceBreakdown: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.sourceBreakdown
     },
@@ -87,9 +97,9 @@ export const initialStamps: Stamp[] = [
     tags: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.tags,
     isFavorite: false,
     purchasePrice: 0.30,
-    purchaseDate: new Date().toISOString(),
+    purchaseDate: null,
     grade: VERIFIED_STAMPS.find(s => s.id === 'stamp-vanburen-8c')!.grade,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: SEEDED_AT,
+    updatedAt: SEEDED_AT
   }
 ] as any[];

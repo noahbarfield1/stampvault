@@ -2,8 +2,8 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useUIStore } from '@/store/ui';
 import styles from './DropZone.module.css';
-import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 
 interface DropZoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -22,123 +22,90 @@ const ACCEPTED_TYPES: Record<string, string[]> = {
   'image/heif': ['.heif'],
 };
 
-const convertHeicFile = async (file: File): Promise<File> => {
-  const nameLower = file.name.toLowerCase();
-  if (
-    nameLower.endsWith('.heic') ||
-    nameLower.endsWith('.heif') ||
+/** Thrown when a HEIC photo cannot be decoded in this browser. */
+export class HeicConversionError extends Error {
+  constructor(public fileName: string) {
+    super(
+      `Could not read ${fileName}. Open it in Photos and share it as a JPEG, or set ` +
+        `Camera → Formats → Most Compatible on your iPhone.`,
+    );
+    this.name = 'HeicConversionError';
+  }
+}
+
+const isHeic = (file: File) => {
+  const n = file.name.toLowerCase();
+  return (
+    n.endsWith('.heic') ||
+    n.endsWith('.heif') ||
     file.type === 'image/heic' ||
     file.type === 'image/heif'
-  ) {
-    // 1. Try to convert using heic2any
-    try {
-      const heic2any = (await import('heic2any')).default;
-      const result = await heic2any({
-        blob: file,
-        toType: 'image/jpeg',
-        quality: 0.8,
-      });
-      const convertedBlob = Array.isArray(result) ? result[0] : result;
-      if (convertedBlob) {
-        const newName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-        return new File([convertedBlob], newName, { type: 'image/jpeg' });
-      }
-    } catch (e) {
-      console.error('HEIC to JPG conversion failed using heic2any, trying database fallback:', e);
-    }
+  );
+};
 
-    // 2. Fall back to looking up pre-rendered images in VERIFIED_STAMPS by keywords
-    let matchedImageUrl = '';
-    if (nameLower.includes('img_4184') || nameLower.includes('harrison') || nameLower.includes('814')) {
-      matchedImageUrl = '/test-stamps/stamp-4.png';
-    } else {
-      const match = VERIFIED_STAMPS.find((stamp) =>
-        stamp.keywords.some((keyword) => nameLower.includes(keyword.toLowerCase()))
-      );
-      if (match) {
-        matchedImageUrl = match.referenceImageUrl;
-      }
-    }
+/**
+ * Convert an iPhone HEIC photo to JPEG.
+ *
+ * Throws on failure — deliberately. The previous implementation had two
+ * fallbacks that were far worse than an error:
+ *
+ *   1. It matched the FILENAME against the catalog and substituted a completely
+ *      different stamp's reference photo as if it were the user's own. That
+ *      image then flowed into segmentation AND identification, so the app would
+ *      confidently identify and price a stamp the user does not own.
+ *   2. It drew a gradient card reading "HEIC Image Preview" and returned that
+ *      as the photo, which the AI would then be asked to identify.
+ *
+ * A visible error the user can act on beats a silent, confident wrong answer.
+ */
+const convertHeicFile = async (file: File): Promise<File> => {
+  if (!isHeic(file)) return file;
 
-    if (matchedImageUrl) {
-      try {
-        const response = await fetch(matchedImageUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          return new File([blob], file.name, { type: blob.type || 'image/png' });
-        }
-      } catch (e) {
-        console.error(`Error fetching fallback pre-rendered image ${matchedImageUrl}:`, e);
-      }
-    }
-
-    // 3. Fall back to canvas-generated preview
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 400;
-      canvas.height = 400;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Gradient background
-        const gradient = ctx.createLinearGradient(0, 0, 400, 400);
-        gradient.addColorStop(0, '#0a0a0f');
-        gradient.addColorStop(1, '#151525');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 400, 400);
-
-        // Gold border
-        ctx.strokeStyle = '#d4a574';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(15, 15, 370, 370);
-
-        // Draw text
-        ctx.fillStyle = '#d4a574';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('HEIC Image Preview', 200, 160);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '14px sans-serif';
-        // Wrap name if too long
-        const displayName =
-          file.name.length > 30 ? file.name.slice(0, 27) + '...' : file.name;
-        ctx.fillText(displayName, 200, 210);
-
-        ctx.fillStyle = '#888888';
-        ctx.font = 'italic 12px sans-serif';
-        ctx.fillText('(Browser Conversion)', 200, 240);
-
-        ctx.fillStyle = '#f5c842';
-        ctx.font = '28px sans-serif';
-        ctx.fillText('🎫', 200, 300);
-      }
-
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png')
-      );
-      if (blob) {
-        return new File([blob], file.name, { type: 'image/png' });
-      }
-    } catch (e) {
-      console.error('Error creating canvas fallback for HEIC:', e);
-    }
+  let converted: Blob | Blob[] | null = null;
+  try {
+    const heic2any = (await import('heic2any')).default;
+    converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+  } catch (e) {
+    console.error('[DropZone] heic2any failed:', e);
+    throw new HeicConversionError(file.name);
   }
-  return file;
+
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!blob) throw new HeicConversionError(file.name);
+
+  return new File([blob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' });
 };
 
 export default function DropZone({ onFilesSelected }: DropZoneProps) {
   const [previews, setPreviews] = useState<FilePreview[]>([]);
+  const [converting, setConverting] = useState(0);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const addToast = useUIStore((s) => s.addToast);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      const processedFiles = await Promise.all(
-        acceptedFiles.map(async (file) => {
-          return await convertHeicFile(file);
-        })
-      );
+      // heic2any decodes on the main thread and takes seconds on a 12MP photo,
+      // so the picker used to appear to hang with no feedback at all.
+      setConverting(acceptedFiles.length);
+      const accepted: File[] = [];
+      const rejected: string[] = [];
 
-      const newPreviews = processedFiles.map((file) => ({
+      for (const file of acceptedFiles) {
+        try {
+          accepted.push(await convertHeicFile(file));
+        } catch (err) {
+          rejected.push(err instanceof Error ? err.message : `Could not read ${file.name}`);
+        }
+      }
+      setConverting(0);
+
+      // Reject the file rather than substituting anything in its place.
+      for (const message of rejected) {
+        addToast({ type: 'error', title: 'Photo could not be read', message });
+      }
+      if (accepted.length === 0) return;
+
+      const newPreviews = accepted.map((file) => ({
         file,
         url: URL.createObjectURL(file),
       }));
@@ -150,7 +117,7 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         return updated;
       });
     },
-    [onFilesSelected]
+    [onFilesSelected, addToast]
   );
 
   const removeFile = useCallback(
@@ -313,6 +280,13 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
       )}
 
       {/* Previews */}
+      {converting > 0 && (
+        <p className={styles.convertingNote} role="status" aria-live="polite">
+          Converting {converting} photo{converting === 1 ? '' : 's'} from HEIC… this can take a
+          few seconds.
+        </p>
+      )}
+
       {previews.length > 0 && (
         <div className={styles.previews}>
           {previews.map((preview, index) => (
