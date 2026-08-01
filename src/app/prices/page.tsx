@@ -47,7 +47,7 @@ export default function PricesPage() {
 
   const totalChange = useMemo(() => {
     return stamps.reduce((sum, s) => {
-      let currentVal = s.pricing?.estimatedValue ?? 0;
+      const currentVal = s.pricing?.estimatedValue ?? 0;
       let prevVal = currentVal;
       if (s.priceHistory && s.priceHistory.length >= 2) {
         prevVal = s.priceHistory[s.priceHistory.length - 2].value;

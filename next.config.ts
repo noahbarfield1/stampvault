@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['@google/genai', 'openai'],
+  serverExternalPackages: ['@google/genai'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

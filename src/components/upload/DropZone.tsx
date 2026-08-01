@@ -223,14 +223,14 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
             <span className={styles.modeIcon}>📄</span>
             <div className={styles.modeText}>
               <strong>Single & Sheet Mode</strong>
-              <span>Upload 1 photo. We'll automatically detect and crop all stamps on the page.</span>
+              <span>Upload 1 photo. We&apos;ll automatically detect and crop all stamps on the page.</span>
             </div>
           </div>
           <div className={styles.modeCard}>
             <span className={styles.modeIcon}>📚</span>
             <div className={styles.modeText}>
               <strong>Batch Mode</strong>
-              <span>Upload multiple photos. We'll process them all at once into your collection.</span>
+              <span>Upload multiple photos. We&apos;ll process them all at once into your collection.</span>
             </div>
           </div>
         </div>

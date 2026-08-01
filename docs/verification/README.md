@@ -45,3 +45,28 @@ which then failed the minimum-size filter and yielded zero detections with an
 HTTP 200.
 
 These files are kept as the honest record of what was broken and when.
+
+## Why the old runners are gone
+
+`tests/run-e2e.js` and `tests/e2e-visual-test.js` were deleted in the
+mobile-overhaul work. Three of `run-e2e.js`'s sixty assertions were
+`checkFileContains(...)` checks requiring that `generateMockIdentifiedStamps`,
+`lowerName` (the filename-matching fallback) and `'jenny'` still appeared in
+`src/app/upload/page.tsx` — i.e. the suite was a ratchet holding the fabricated
+data in place, and would have failed the moment that data was removed.
+
+Roughly forty more were source-text tautologies asserting that a CSS file
+contains the string `@media`. They proved nothing and broke on any refactor.
+Its pricing assertions expected exact values of 350000 and 2300000 from
+`/api/pricing/lookup`, which now performs a real eBay scrape — they would either
+fail or silently assert the catalog fallback while looking like a live-price
+test.
+
+Current verification is `npm test` (typecheck + unit + lint). The unit layer
+uses the existing esbuild `.check.mjs` pattern:
+
+- `src/lib/segmentation/normalize.check.mjs` — 21 coordinate tests
+- `src/lib/pricing/aggregate.check.mjs` — 12 pricing-ladder tests
+- `src/lib/pricing/providers/firecrawl-parse.check.mjs`
+
+A browser harness (Playwright, device projects, axe) is still outstanding.

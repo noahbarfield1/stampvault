@@ -261,10 +261,20 @@ export default function AssistantPage() {
   );
 
   /* ── Follow-up suggestions (randomized subset) ──────────────────────── */
+  // Math.random() during render is impure: the server and client pick different
+  // subsets, so this hydration-mismatched. Rotate deterministically instead —
+  // the point is variety between turns, not true randomness.
+  const [followUpOffset, setFollowUpOffset] = useState(0);
+  useEffect(() => {
+    if (showFollowUps) setFollowUpOffset((n) => n + 3);
+  }, [showFollowUps]);
+
   const currentFollowUps = useMemo(() => {
-    const shuffled = [...FOLLOW_UPS].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
-  }, [showFollowUps]); // eslint-disable-line react-hooks/exhaustive-deps
+    return Array.from(
+      { length: Math.min(3, FOLLOW_UPS.length) },
+      (_, i) => FOLLOW_UPS[(followUpOffset + i) % FOLLOW_UPS.length],
+    );
+  }, [followUpOffset]);
 
   const canSend = inputValue.trim().length > 0 && !isTyping;
 

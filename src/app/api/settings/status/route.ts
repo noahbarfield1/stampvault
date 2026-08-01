@@ -16,7 +16,6 @@ export async function GET() {
     // Vertex AI needs no stored key — auth is via Application Default
     // Credentials (local) or the deployed service account (production).
     vertexAi: true,
-    perplexity: isConfigured(process.env.PERPLEXITY_API_KEY),
     firecrawl: isConfigured(process.env.FIRECRAWL_API_KEY),
   });
 }

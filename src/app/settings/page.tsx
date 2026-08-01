@@ -21,7 +21,6 @@ interface SettingsState {
 
 interface ServiceStatus {
   vertexAi: boolean;
-  perplexity: boolean;
   firecrawl: boolean;
 }
 
@@ -371,11 +370,6 @@ export default function SettingsPage() {
                 key: 'vertexAi' as const,
                 label: 'Vertex AI (Gemini)',
                 hint: 'Stamp identification, segmentation, and AI chat',
-              },
-              {
-                key: 'perplexity' as const,
-                label: 'Perplexity',
-                hint: 'Market research and deep-research queries',
               },
               {
                 key: 'firecrawl' as const,

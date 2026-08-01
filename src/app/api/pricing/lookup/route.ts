@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     // Live scrape: recent SOLD first; only fetch ACTIVE if no sales found.
     const provider = getListingProvider();
-    let sold = await provider.fetchSold(query, 12);
+    const sold = await provider.fetchSold(query, 12);
     let active: typeof sold = [];
     if (sold.length === 0) {
       active = await provider.fetchActive(query, 12);

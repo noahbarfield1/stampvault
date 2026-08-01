@@ -261,7 +261,7 @@ export default function DashboardPage() {
 
     // Value change 30d (aggregate value change percent)
     const totalPreviousValue = storeStamps.reduce((sum, s) => {
-      let currentVal = s.pricing?.estimatedValue ?? 0;
+      const currentVal = s.pricing?.estimatedValue ?? 0;
       let prevVal = currentVal;
       if (s.priceHistory && s.priceHistory.length >= 2) {
         prevVal = s.priceHistory[s.priceHistory.length - 2].value;
@@ -441,7 +441,7 @@ export default function DashboardPage() {
     return sortedDates.map((date) => {
       const dateMs = new Date(date).getTime();
       const value = storeStamps.reduce((sum, stamp) => {
-        let stampVal = stamp.pricing?.estimatedValue ?? 0;
+        const stampVal = stamp.pricing?.estimatedValue ?? 0;
         let closestHistoryVal = stampVal;
         let closestDiff = Infinity;
         
