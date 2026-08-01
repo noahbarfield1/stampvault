@@ -192,17 +192,40 @@ export default function CloudSyncPanel() {
           </p>
           <ol>
             <li>
-              Open the Firebase console → <code>{FIREBASE_PROJECT_ID}</code> → Build →
-              Authentication → <strong>Get started</strong>.
+              <a
+                className={styles.setupLink}
+                href={`https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/authentication`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Authentication ↗
+              </a>{' '}
+              and press <strong>Get started</strong>.
             </li>
             <li>
-              Under Sign-in method, enable <strong>Google</strong> and pick a support email.
+              <a
+                className={styles.setupLink}
+                href={`https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/authentication/providers`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Sign-in method ↗
+              </a>{' '}
+              → choose <strong>Google</strong> → toggle Enable → pick a support email → Save.
+              Firebase creates the OAuth client for you.
             </li>
             <li>
-              Under Settings → Authorized domains, make sure your deployed domain is listed
-              (<code>localhost</code> is there by default).
+              <a
+                className={styles.setupLink}
+                href={`https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/authentication/settings`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Check Authorized domains ↗
+              </a>{' '}
+              — add the domain you deploy to. <code>localhost</code> is already there.
             </li>
-            <li>Come back here and press Sign in with Google.</li>
+            <li>Come back and press Sign in with Google. Nothing else changes.</li>
           </ol>
         </div>
       )}

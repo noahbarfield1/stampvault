@@ -166,3 +166,14 @@
   font-size: 0.8em;
   color: var(--color-text-accent);
 }
+
+.setupLink {
+  color: var(--color-accent-gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: var(--weight-semibold);
+}
+
+.setupLink:hover {
+  color: var(--color-accent-amber);
+}
