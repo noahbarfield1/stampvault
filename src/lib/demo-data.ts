@@ -11,7 +11,16 @@ import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 const SEEDED_AT = '2026-06-21T00:00:00.000Z';
 
 
-export const initialStamps: Stamp[] = [
+/*
+ * Sample stamps, loaded only when someone explicitly asks for them via
+ * Settings -> Data Management -> Load sample collection.
+ *
+ * These used to be the store's INITIAL state, so every new person who opened
+ * the app saw three stamps they do not own presented as their collection,
+ * complete with a total value. Anyone signing in would then have pushed them
+ * up to their own cloud account as if they were real.
+ */
+export const demoStamps: Stamp[] = [
   {
     id: 'stamp-user-001',
     userId: 'user-001',

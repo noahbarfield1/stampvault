@@ -367,6 +367,20 @@ export default function SettingsPage() {
   }, [setStamps, addToast]);
 
   /* ── Render Section Body ────────────────────────────────────────────── */
+  const handleLoadSamples = useCallback(async () => {
+    const { demoStamps } = await import('@/lib/demo-data');
+    const existing = new Set(useStampsStore.getState().stamps.map((s) => s.id));
+    const added = demoStamps.filter((s) => !existing.has(s.id));
+    added.forEach((s) => useStampsStore.getState().addStamp(s));
+    addToast({
+      type: added.length ? 'success' : 'info',
+      title: added.length ? 'Sample stamps added' : 'Samples already loaded',
+      message: added.length
+        ? `${added.length} sample stamp${added.length === 1 ? '' : 's'} added to your collection.`
+        : undefined,
+    });
+  }, [addToast]);
+
   const renderSectionBody = (sectionId: string) => {
     switch (sectionId) {
       case 'sync':
@@ -524,6 +538,23 @@ export default function SettingsPage() {
       case 'data':
         return (
           <div className={styles.sectionBody}>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Sample Collection</span>
+              <p className={styles.fieldHint} style={{ marginBottom: 'var(--space-2)' }}>
+                Three real US Presidential Series stamps, for trying the app out. They are
+                clearly not yours — remove them whenever you like.
+              </p>
+              <div className={styles.buttonGroup}>
+                <button
+                  className={styles.outlineButton}
+                  onClick={handleLoadSamples}
+                  type="button"
+                >
+                  Load sample collection
+                </button>
+              </div>
+            </div>
+
             <div className={styles.field}>
               <span className={styles.fieldLabel}>Export Collection</span>
               <div className={styles.buttonGroup}>

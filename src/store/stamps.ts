@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { Stamp } from '@/types/stamp';
-import { initialStamps } from '@/lib/stamps-data';
+
 import type {
   CollectionStats,
   FilterConfig,
@@ -265,8 +265,13 @@ export const useStampsStore = create<StampsState>()(
     persist(
       (set) => ({
         /* Data */
-        stamps: initialStamps,
-        filteredStamps: initialStamps,
+        // A new collection starts EMPTY. It used to start with three sample
+        // stamps, so anyone opening the app for the first time saw a
+        // collection and a total value that were not theirs — and signing in
+        // would have pushed them to their own cloud account as real records.
+        // The samples now live in @/lib/demo-data behind an explicit action.
+        stamps: [],
+        filteredStamps: [],
         selectedStampId: null,
         collectionStats: null,
 
