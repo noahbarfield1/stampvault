@@ -328,6 +328,8 @@
 }
 
 .aboutLink {
+  composes: touchTarget from global;
+  justify-content: flex-end;
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   color: var(--color-accent-gold);

@@ -227,7 +227,9 @@
 .emptyState {
   text-align: center;
   padding: var(--space-12) var(--space-6);
-  color: var(--color-text-secondary);
+  /* An empty state is the only thing on screen when it shows, so it must be
+     comfortably readable — secondary grey failed contrast here. */
+  color: var(--color-text-primary);
   font-size: var(--text-sm);
 }
 

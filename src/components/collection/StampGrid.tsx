@@ -41,7 +41,7 @@ export default function StampGrid({
     return (
       <div className={styles.empty}>
         <span className={styles.emptyIcon}>🔍</span>
-        <h3 className={styles.emptyTitle}>No stamps found</h3>
+        <h2 className={styles.emptyTitle}>No stamps found</h2>
         <p className={styles.emptyText}>
           Try adjusting your filters or add new stamps to your collection.
         </p>

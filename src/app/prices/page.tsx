@@ -214,6 +214,7 @@ export default function PricesPage() {
     setIsRefreshing(true);
     setRefreshProgress({ done: 0, total: targets.length });
 
+    let blocked: string | null = null;
     let updated = 0;
     let failed = 0;
     let cursor = 0;
@@ -235,7 +236,9 @@ export default function PricesPage() {
             }),
           });
           if (!res.ok) throw new Error(String(res.status));
-          const { pricing } = await res.json();
+          const { pricing, unavailableReason } = await res.json();
+          // Distinguish "could not check" from "nothing for sale".
+          if (unavailableReason) blocked = unavailableReason;
           if (pricing) {
             updateStamp(stamp.id, { pricing });
             updated++;
@@ -254,9 +257,10 @@ export default function PricesPage() {
     setIsRefreshing(false);
     setRefreshProgress({ done: 0, total: 0 });
     addToast({
-      type: failed > 0 ? 'warning' : 'success',
-      title: `Refreshed ${updated} of ${targets.length}`,
-      message: failed > 0 ? `${failed} could not be priced right now.` : undefined,
+      type: blocked || failed > 0 ? 'warning' : 'success',
+      title: blocked ? 'Could not refresh prices' : `Refreshed ${updated} of ${targets.length}`,
+      message: blocked ?? (failed > 0 ? `${failed} could not be priced right now.` : undefined),
+      duration: blocked ? 20000 : undefined,
     });
   };
 

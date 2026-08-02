@@ -86,7 +86,7 @@ export function isIdentified(ident: RawIdentification): boolean {
 export async function lookupPricing(
   ident: RawIdentification,
   opts: { forceRefresh?: boolean; signal?: AbortSignal } = {},
-): Promise<unknown | null> {
+): Promise<{ pricing: unknown | null; unavailableReason: string | null }> {
   const res = await fetch('/api/pricing/lookup', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -102,7 +102,13 @@ export async function lookupPricing(
     signal: opts.signal,
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) return { pricing: null, unavailableReason: null };
   const json = await res.json();
-  return json?.pricing ?? null;
+  return {
+    pricing: json?.pricing ?? null,
+    // Set when the lookup failed for an infrastructure reason (out of credits,
+    // bad key) rather than genuinely finding nothing. The difference matters:
+    // one means "we could not check", the other means "nothing is for sale".
+    unavailableReason: (json?.unavailableReason as string | undefined) ?? null,
+  };
 }

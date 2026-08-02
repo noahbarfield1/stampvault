@@ -93,13 +93,23 @@
 /* Low model confidence, but still included — flagged rather than silently
    dropped, because a silent exclusion is worse than a visible warning. */
 .boxUncertain {
-  composes: boxSelected;
+  /* composes `box` DIRECTLY, not via boxSelected. A two-level composes
+     chain does not resolve transitively here — the emitted class list was
+     `boxUncertain boxSelected` with `box` missing, so these boxes lost
+     position:absolute and rendered unpositioned with zero height. Caught
+     by tests/upload-flow.spec.ts. */
+  composes: box;
   border-color: var(--color-warning, #f5a524);
   background: rgba(245, 165, 36, 0.14);
 }
 
 .boxAdjusting {
-  composes: boxSelected;
+  /* composes `box` DIRECTLY, not via boxSelected. A two-level composes
+     chain does not resolve transitively here — the emitted class list was
+     `boxUncertain boxSelected` with `box` missing, so these boxes lost
+     position:absolute and rendered unpositioned with zero height. Caught
+     by tests/upload-flow.spec.ts. */
+  composes: box;
   border-color: var(--color-accent-amber);
   border-style: solid;
   box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.35), 0 0 18px rgba(212, 165, 116, 0.4);

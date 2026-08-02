@@ -234,6 +234,7 @@ export default function UploadPage() {
     // Crop first, with visible progress. The old code decoded the source image
     // once PER BOX inside the loop — 20 boxes meant 20 decodes of a 12MP photo,
     // 5-15 seconds of frozen UI with no loading state on the button at all.
+    let pricingUnavailable: string | null = null;
     const crops = new Map<string, string>();
     if (mode === 'sheet' && sheetImageDataUrl) {
       setIsDetecting(true);
@@ -272,9 +273,15 @@ export default function UploadPage() {
 
       try {
         const ident = await identifyStamp(image, controller.signal);
-        const pricing = isIdentified(ident)
-          ? ((await lookupPricing(ident, { signal: controller.signal })) as Stamp['pricing'] | null)
-          : null;
+        let pricing: Stamp['pricing'] | null = null;
+        if (isIdentified(ident)) {
+          const lookup = await lookupPricing(ident, { signal: controller.signal });
+          pricing = (lookup.pricing as Stamp['pricing'] | null) ?? null;
+          // Remember WHY pricing is missing. Without this the user is told
+          // "no listings found" when the truth is that the lookup service is
+          // out of credits — so a whole album reads as worthless.
+          if (lookup.unavailableReason) pricingUnavailable = lookup.unavailableReason;
+        }
         results.push(buildIdentifiedStamp({ ident, imageDataUrl: image, pricing, index: idx, now }));
         session.setIdentifyStatus(target.id, 'done');
       } catch (err) {
@@ -289,6 +296,14 @@ export default function UploadPage() {
     }
 
     abortRef.current = null;
+    if (pricingUnavailable) {
+      addToast({
+        type: 'warning',
+        title: 'Stamps identified, but not priced',
+        message: `${pricingUnavailable} Your stamps are saved and you can re-run pricing later from the Price Tracker.`,
+        duration: 20000,
+      });
+    }
     if (!controller.signal.aborted) animateTransition('complete');
   }, [selected, mode, sheetImageDataUrl, session, addToast, animateTransition]);
 

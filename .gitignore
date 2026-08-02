@@ -52,3 +52,7 @@ next-env.d.ts
 *.bundle
 *.patch
 firebase-debug.log
+
+# playwright
+/test-results/
+/playwright-report/

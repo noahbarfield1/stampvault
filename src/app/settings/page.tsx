@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GoldButton from '@/components/ui/GoldButton';
 import Modal from '@/components/ui/Modal';
@@ -663,56 +664,43 @@ export default function SettingsPage() {
         return (
           <div className={styles.sectionBody}>
             <div className={styles.aboutGrid}>
+              {/* Every value here is real. This block previously advertised
+                  perduestampvault.app/docs (domain does not resolve),
+                  github.com/perduestampvault (404) and a support@ address on
+                  that same dead domain — so it invited people to email nobody.
+                  It also claimed Next.js 15 and a hardcoded build date. */}
               <div className={styles.aboutItem}>
                 <span className={styles.aboutLabel}>Version</span>
-                <span className={styles.aboutValue}>1.0.0</span>
-              </div>
-              <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>Build</span>
-                <span className={styles.aboutValue}>2026.06.21</span>
+                <span className={styles.aboutValue}>0.1.0</span>
               </div>
               <div className={styles.aboutItem}>
                 <span className={styles.aboutLabel}>Framework</span>
-                <span className={styles.aboutValue}>Next.js 15</span>
+                <span className={styles.aboutValue}>Next.js 16</span>
               </div>
               <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>AI Engine</span>
-                <span className={styles.aboutValue}>Vertex AI Gemini</span>
+                <span className={styles.aboutLabel}>Identification</span>
+                <span className={styles.aboutValue}>Google Gemini 2.5 (Vertex AI)</span>
               </div>
               <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>Documentation</span>
+                <span className={styles.aboutLabel}>Pricing data</span>
+                <span className={styles.aboutValue}>eBay listings via Firecrawl</span>
+              </div>
+              <div className={styles.aboutItem}>
+                <span className={styles.aboutLabel}>How it works</span>
+                <Link href="/tutorial" className={styles.aboutLink}>
+                  Read the guide
+                </Link>
+              </div>
+              <div className={styles.aboutItem}>
+                <span className={styles.aboutLabel}>Source</span>
                 <a
-                  href="https://perduestampvault.app/docs"
+                  href="https://github.com/noahbarfield1/stampvault"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.aboutLink}
                 >
-                  perduestampvault.app/docs
+                  github.com/noahbarfield1/stampvault
                 </a>
-              </div>
-              <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>GitHub</span>
-                <a
-                  href="https://github.com/perduestampvault"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.aboutLink}
-                >
-                  github.com/perduestampvault
-                </a>
-              </div>
-              <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>Support</span>
-                <a
-                  href="mailto:support@perduestampvault.app"
-                  className={styles.aboutLink}
-                >
-                  support@perduestampvault.app
-                </a>
-              </div>
-              <div className={styles.aboutItem}>
-                <span className={styles.aboutLabel}>License</span>
-                <span className={styles.aboutValue}>MIT</span>
               </div>
             </div>
           </div>
@@ -765,7 +753,7 @@ export default function SettingsPage() {
               <div className={styles.sectionHeaderLeft}>
                 <span className={styles.sectionIcon}>{section.icon}</span>
                 <div>
-                  <h3 className={styles.sectionTitle}>{section.title}</h3>
+                  <h2 className={styles.sectionTitle}>{section.title}</h2>
                   <p className={styles.sectionDescription}>
                     {section.description}
                   </p>

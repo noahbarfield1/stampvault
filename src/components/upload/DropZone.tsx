@@ -204,6 +204,7 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         capture="environment"
+        aria-label="Take a photo of your stamps"
         onChange={handleCameraCapture}
       />
 
@@ -212,11 +213,11 @@ export default function DropZone({ onFilesSelected }: DropZoneProps) {
         {...getRootProps()}
         className={isDragActive ? styles.zoneActive : styles.zone}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps({ 'aria-label': 'Choose stamp photos to upload' })} />
         <span className={styles.icon}>{isDragActive ? '📥' : '☁️'}</span>
-        <h3 className={styles.title}>
+        <h2 className={styles.title}>
           {isDragActive ? 'Drop your images here' : 'Upload Stamp Images'}
-        </h3>
+        </h2>
         
         <div className={styles.modeCards}>
           <div className={styles.modeCard}>

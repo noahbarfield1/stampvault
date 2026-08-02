@@ -36,7 +36,11 @@
   input,
   select,
   textarea {
-    font-size: max(16px, var(--text-base));
+    /* !important is deliberate. This is an accessibility FLOOR, and an element
+       selector (0,0,1) loses to any CSS-Module class (0,1,0) — which is exactly
+       what happened: settings <select>s kept their 13px module rule and still
+       triggered iOS zoom. Caught by tests/a11y.spec.ts. */
+    font-size: max(16px, var(--text-base)) !important;
   }
 }
 
