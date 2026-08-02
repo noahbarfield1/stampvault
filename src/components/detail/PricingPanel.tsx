@@ -122,6 +122,11 @@ export default function PricingPanel({
   }
 
   const basis = pricing.priceBasis;
+  // No listings AND no value: the lookup came back empty rather than cheap.
+  const unpriced =
+    pricing.estimatedValue === 0 &&
+    (pricing.sources?.length ?? 0) === 0 &&
+    (basis?.sampleSize ?? 0) === 0;
 
   return (
     <div className={styles.panel}>
@@ -133,20 +138,35 @@ export default function PricingPanel({
           </span>
         )}
         <p className={styles.valueLabel}>
-          {basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}{' '}
+          {unpriced ? 'Not priced' : basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}{' '}
           <Tooltip label="Where does this price come from?" title="Where this comes from">
             An estimate aggregated from real eBay listings, with outliers removed. It is not an
             appraisal — condition drives most of a stamp&rsquo;s value and a photo cannot judge
             gum, thins or repairs.
           </Tooltip>
         </p>
-        <p className={styles.valueAmount}>
-          {formatCurrency(pricing.estimatedValue)}
-        </p>
-        <p className={styles.valueRange}>
-          Range: {formatCurrency(pricing.priceRange.min)} –{' '}
-          {formatCurrency(pricing.priceRange.max)}
-        </p>
+        {/* A stamp we could not price must NOT render as $0.00 — that reads as
+            "this is worthless" rather than "we could not look it up", which is
+            the opposite of the truth for something like a duck stamp. */}
+        {unpriced ? (
+          <>
+            <p className={styles.valueAmount}>—</p>
+            <p className={styles.valueRange}>
+              No sold listings found for this stamp right now. This is not an estimate of
+              zero — try Refresh, or search the catalogue number yourself.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={styles.valueAmount}>
+              {formatCurrency(pricing.estimatedValue)}
+            </p>
+            <p className={styles.valueRange}>
+              Range: {formatCurrency(pricing.priceRange.min)} –{' '}
+              {formatCurrency(pricing.priceRange.max)}
+            </p>
+          </>
+        )}
         <ConfidenceMeter
           confidence={pricing.confidence}
           label="Confidence"

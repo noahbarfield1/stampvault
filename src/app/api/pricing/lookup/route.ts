@@ -11,6 +11,7 @@
  * repeated lookups of the same stamp don't re-scrape. (A Firestore-backed cache is
  * the production upgrade; see the design spec.)
  * ────────────────────────────────────────────────────────────────────────────── */
+import { takeProviderUnavailableReason } from '@/lib/pricing/providers/firecrawl-provider';
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { PriceData } from '@/types/stamp';
@@ -117,10 +118,16 @@ export async function POST(req: NextRequest) {
     }
 
     const pricing = aggregateLivePricing({ sold, active, catalog });
-    setCached(cacheKey, pricing);
+
+    // If the provider was unavailable (out of credits, bad key) rather than
+    // simply finding nothing, do NOT cache an empty result — otherwise a
+    // billing outage gets baked in as "this stamp has no price" for 24 hours.
+    const unavailable = takeProviderUnavailableReason();
+    if (!unavailable) setCached(cacheKey, pricing);
 
     return NextResponse.json({
       pricing,
+      ...(unavailable ? { unavailableReason: unavailable } : {}),
       provider: provider.name,
       sourcesUsed: {
         sold: sold.length,

@@ -57,7 +57,19 @@ async function scrapeMarkdown(url: string, apiKey: string): Promise<string | nul
     });
 
     if (!response.ok) {
-      console.error(`[firecrawl-provider] scrape failed ${response.status} for ${url}`);
+      // 402 means the Firecrawl account is out of credits — a billing problem,
+      // not "this stamp has no listings". Distinguish it so the UI can say so
+      // instead of implying the stamp is unsellable.
+      if (response.status === 402) {
+        providerUnavailableReason =
+          'Price lookups are paused — the marketplace search service is out of credits.';
+        console.error('[firecrawl-provider] OUT OF CREDITS (402). Pricing is disabled until topped up.');
+      } else if (response.status === 401 || response.status === 403) {
+        providerUnavailableReason = 'Price lookups are not authorised — check the Firecrawl API key.';
+        console.error(`[firecrawl-provider] auth failure ${response.status}`);
+      } else {
+        console.error(`[firecrawl-provider] scrape failed ${response.status} for ${url}`);
+      }
       return null;
     }
 
@@ -67,6 +79,19 @@ async function scrapeMarkdown(url: string, apiKey: string): Promise<string | nul
     console.error('[firecrawl-provider] scrape request error:', error);
     return null;
   }
+}
+
+/**
+ * Set when the provider fails for a reason the user needs to hear about —
+ * out of credits, bad key — as opposed to simply finding no listings.
+ * Read once per request by the pricing route.
+ */
+let providerUnavailableReason: string | null = null;
+
+export function takeProviderUnavailableReason(): string | null {
+  const reason = providerUnavailableReason;
+  providerUnavailableReason = null;
+  return reason;
 }
 
 async function fetchListings(

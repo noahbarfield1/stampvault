@@ -181,10 +181,17 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  /* How many stamps actually have a price, so the total can say what it covers. */
+  const pricedCount = useMemo(
+    () => storeStamps.filter((s) => (s.pricing?.estimatedValue ?? 0) > 0).length,
+    [storeStamps],
+  );
+
   /* Calculate collection stats dynamically from storeStamps */
   const stats = useMemo<CollectionStats>(() => {
     const totalStamps = storeStamps.length;
     const totalValue = storeStamps.reduce((sum, s) => sum + (s.pricing?.estimatedValue ?? 0), 0);
+    // Stamps we could not price are not worth zero — they are simply unknown.
     const averageValue = totalStamps > 0 ? totalValue / totalStamps : 0;
 
     // Find highest value stamp
@@ -531,7 +538,10 @@ export default function DashboardPage() {
               value={formatCurrency(stats.totalValue)}
               icon={<DollarIcon />}
               trend={{ value: stats.valueChange30d, isPositive: stats.valueChange30d >= 0 }}
-              subtitle="USD estimated"
+              // Say how much of the collection the total actually covers.
+              // "$0.00 / USD estimated" on a set of unpriced stamps reads as
+              // "worthless" rather than "not looked up yet".
+              subtitle={`USD${pricedCount < storeStamps.length ? ` · ${pricedCount} of ${storeStamps.length} priced` : ' estimated'}`}
               onClick={() => router.push('/prices')}
             />
             <StatCard
