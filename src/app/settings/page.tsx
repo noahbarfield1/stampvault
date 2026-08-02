@@ -24,6 +24,8 @@ interface SettingsState {
 interface ServiceStatus {
   vertexAi: boolean;
   firecrawl: boolean;
+  ebay: boolean;
+  pricingProvider?: { name: string; free: boolean; reason: string };
 }
 
 interface SectionConfig {
@@ -404,12 +406,17 @@ export default function SettingsPage() {
                 hint: 'Stamp identification, segmentation, and AI chat',
               },
               {
+                key: 'ebay' as const,
+                label: 'eBay Browse API',
+                hint: 'Free structured pricing — preferred when configured',
+              },
+              {
                 key: 'firecrawl' as const,
                 label: 'Firecrawl',
-                hint: 'Live marketplace price scraping',
+                hint: 'Price scraping fallback, costs credits per lookup',
               },
             ].map(({ key, label, hint }) => {
-              const active = serviceStatus?.[key];
+              const active = Boolean(serviceStatus?.[key]);
               return (
                 <div key={key} className={styles.toggleRow}>
                   <div className={styles.toggleInfo}>
@@ -429,6 +436,13 @@ export default function SettingsPage() {
                 </div>
               );
             })}
+
+            {serviceStatus?.pricingProvider && (
+              <p className={styles.fieldHint} style={{ marginTop: 'var(--space-3)' }}>
+                Pricing uses <strong>{serviceStatus.pricingProvider.name}</strong>.{' '}
+                {serviceStatus.pricingProvider.reason}
+              </p>
+            )}
           </div>
         );
 

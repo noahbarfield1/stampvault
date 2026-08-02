@@ -6,6 +6,7 @@
  * ────────────────────────────────────────────────────────────────────────────── */
 
 import { NextResponse } from 'next/server';
+import { describeActiveProvider } from '@/lib/pricing/providers';
 
 function isConfigured(value: string | undefined): boolean {
   return !!value && !value.startsWith('your-');
@@ -17,5 +18,8 @@ export async function GET() {
     // Credentials (local) or the deployed service account (production).
     vertexAi: true,
     firecrawl: isConfigured(process.env.FIRECRAWL_API_KEY),
+    ebay: isConfigured(process.env.EBAY_CLIENT_ID) && isConfigured(process.env.EBAY_CLIENT_SECRET),
+    // Which provider pricing will actually use, and whether it costs credits.
+    pricingProvider: describeActiveProvider(),
   });
 }
