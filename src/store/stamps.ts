@@ -260,6 +260,56 @@ async function mirrorDelete(stampId: string): Promise<void> {
   }
 }
 
+
+/* ── Image hydration ──────────────────────────────────────────────────────
+ *  Full-resolution crops are kept out of localStorage (see partialize below)
+ *  and restored from IndexedDB after rehydrate.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+async function hydrateImages(): Promise<void> {
+  try {
+    const { getStampImages } = await import('@/lib/storage/image-store');
+    const state = useStampsStore.getState();
+    const missing = state.stamps.filter((s) => !s.imageUrl).map((s) => s.id);
+    if (missing.length === 0) return;
+    const images = await getStampImages(missing);
+    if (images.size === 0) return;
+    useStampsStore.setState((prev) => {
+      const stamps = prev.stamps.map((s) =>
+        images.has(s.id) ? { ...s, imageUrl: images.get(s.id)! } : s,
+      );
+      return {
+        stamps,
+        filteredStamps: filterAndSortStamps(stamps, prev.filters, prev.sortConfig),
+      };
+    });
+  } catch {
+    /* thumbnails still render; the full crop simply stays unavailable */
+  }
+}
+
+
+async function storeImage(stamp: Stamp): Promise<void> {
+  if (!stamp.imageUrl?.startsWith('data:')) return;
+  try {
+    const { putStampImage } = await import('@/lib/storage/image-store');
+    await putStampImage(stamp.id, stamp.imageUrl);
+  } catch (err) {
+    // Loud, not silent. The whole point of moving off localStorage is that a
+    // storage failure must be visible rather than quietly losing the image.
+    console.error('[stamps] could not store image for', stamp.id, err);
+  }
+}
+
+async function dropImage(stampId: string): Promise<void> {
+  try {
+    const { deleteStampImage } = await import('@/lib/storage/image-store');
+    await deleteStampImage(stampId);
+  } catch {
+    /* an orphaned image is harmless */
+  }
+}
+
 export const useStampsStore = create<StampsState>()(
   devtools(
     persist(
@@ -387,6 +437,9 @@ export const useStampsStore = create<StampsState>()(
       // Mirror to the cloud when signed in. Fire-and-forget on purpose: the
       // stamp is already saved locally, so a network failure must not block
       // or fail the save. Failures queue for the next full sync.
+      // Persist the full crop to IndexedDB, not localStorage — see the
+      // partialize comment below for why.
+      void storeImage(stamp);
       void mirrorUp(stamp);
       return {
         stamps: newStamps,
@@ -424,6 +477,7 @@ export const useStampsStore = create<StampsState>()(
       // NOT treat 'missing on one side' as a delete, so this is the only way a
       // stamp leaves the cloud.
       void mirrorDelete(id);
+      void dropImage(id);
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(
@@ -440,6 +494,43 @@ export const useStampsStore = create<StampsState>()(
       }),
       {
         name: 'stampvault-stamps',
+        version: 1,
+
+        /*
+         * Previously absent, so the ENTIRE state was written to localStorage —
+         * including `filteredStamps`, which is the same records as `stamps`.
+         * Every full-resolution base64 crop was therefore stored TWICE. At
+         * ~110-270KB per crop that is ~250-550KB per stamp against Safari's
+         * ~5MB cap, so the quota blew after roughly a dozen stamps — and
+         * zustand's persist middleware swallows QuotaExceededError, so saves
+         * failed silently.
+         *
+         * Now: metadata plus a ~20KB thumbnail only. Full crops live in
+         * IndexedDB (see lib/storage/image-store), and filteredStamps /
+         * collectionStats are recomputed on rehydrate rather than stored.
+         */
+        partialize: (state) => ({
+          stamps: state.stamps.map((stamp) => ({ ...stamp, imageUrl: '' })),
+          viewMode: state.viewMode,
+          sortConfig: state.sortConfig,
+          sort: state.sort,
+          filters: state.filters,
+          filterPresets: state.filterPresets,
+          activePresetId: state.activePresetId,
+        }),
+
+        onRehydrateStorage: () => (state) => {
+          if (!state) return;
+          // Derived, never persisted.
+          state.filteredStamps = filterAndSortStamps(
+            state.stamps,
+            state.filters,
+            state.sortConfig,
+          );
+          // Full images come back asynchronously from IndexedDB; the grid
+          // renders from thumbnailUrl in the meantime.
+          void hydrateImages();
+        },
       }
     ),
     { name: 'StampVault:stamps' }

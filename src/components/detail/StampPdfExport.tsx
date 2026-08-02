@@ -172,7 +172,7 @@ export default function StampPdfExport({ stamp }: StampPdfExportProps) {
     <div class="content">
       <div>
         <div class="imageSection">
-          <img src="${stamp.imageUrl}" alt="${identification.description}" />
+          <img src="${stamp.imageUrl || stamp.thumbnailUrl || ''}" alt="${identification.description}" />
         </div>
       </div>
 

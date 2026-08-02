@@ -177,3 +177,13 @@
 .setupLink:hover {
   color: var(--color-accent-amber);
 }
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent-gold);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

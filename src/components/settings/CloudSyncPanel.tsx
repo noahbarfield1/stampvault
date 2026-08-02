@@ -17,6 +17,7 @@ import { useSyncStore } from '@/store/sync';
 import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
 import { FIREBASE_PROJECT_ID } from '@/lib/firebase/config';
+import { storageEstimate, requestPersistentStorage } from '@/lib/storage/image-store';
 import styles from './CloudSyncPanel.module.css';
 
 function relativeTime(iso: string | null): string {
@@ -47,6 +48,16 @@ export default function CloudSyncPanel() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => init(), [init]);
+
+  /* Device storage, so filling it up is visible rather than a surprise. */
+  const [storage, setStorage] = useState<{ usageMB: number; quotaMB: number } | null>(null);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => {
+    void storageEstimate().then(setStorage);
+    if (typeof navigator !== 'undefined') {
+      void navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null));
+    }
+  }, [stamps.length]);
 
   const handleSync = useCallback(async () => {
     setBusy(true);
@@ -179,6 +190,35 @@ export default function CloudSyncPanel() {
             </button>
           </div>
         </>
+      )}
+
+      {storage && (
+        <p className={styles.explain}>
+          Using {storage.usageMB < 1 ? '<1' : storage.usageMB.toFixed(0)}MB of roughly{' '}
+          {storage.quotaMB.toFixed(0)}MB available on this device.
+          {persisted === false && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className={styles.linkButton}
+                onClick={async () => {
+                  const ok = await requestPersistentStorage();
+                  setPersisted(ok);
+                  addToast({
+                    type: ok ? 'success' : 'info',
+                    title: ok ? 'Storage protected' : 'Browser declined',
+                    message: ok
+                      ? 'This browser will no longer evict your collection automatically.'
+                      : 'Keep cloud sync on, or export a backup now and then.',
+                  });
+                }}
+              >
+                Ask the browser to protect it
+              </button>
+            </>
+          )}
+        </p>
       )}
 
       {lastError && <p className={styles.error}>{lastError}</p>}

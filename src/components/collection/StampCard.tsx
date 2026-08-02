@@ -154,7 +154,7 @@ export default function StampCard({ stamp, onClick }: StampCardProps) {
         ) : (
           <img
             className={styles.image}
-            src={stamp.imageUrl || (stamp.thumbnailUrl ?? undefined)}
+            src={stamp.thumbnailUrl || stamp.imageUrl || undefined}
             alt={identification.description}
             onError={() => setImgError(true)}
             loading="lazy"

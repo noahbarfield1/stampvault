@@ -25,6 +25,7 @@ import {
 import { segmentImage, describeSegmentFailure, type SegmentOutcome } from '@/lib/upload/segment-client';
 import { identifyStamp, isIdentified, lookupPricing } from '@/lib/upload/identify-client';
 import { buildIdentifiedStamp, buildFailedStamp, toFullStamp } from '@/lib/upload/to-stamp';
+import { requestPersistentStorage } from '@/lib/storage/image-store';
 import { usePageChrome } from '@/hooks/usePageChrome';
 import styles from './upload.module.css';
 
@@ -303,6 +304,9 @@ export default function UploadPage() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     const now = new Date().toISOString();
+    // Ask the browser to keep this data. Safari evicts non-persistent site
+    // storage after ~7 days of no visits, and Chrome sheds it under pressure.
+    void requestPersistentStorage();
     try {
       for (const partial of identified) {
         // A real thumbnail. Previously the full multi-MB crop data URL was
@@ -318,11 +322,14 @@ export default function UploadPage() {
       session.reset();
       router.push('/collection');
     } catch (err) {
-      // Stay put and keep the results. Never navigate away from unsaved work.
+      // Stay put and keep the results on screen. "Nothing was lost" was the
+      // old wording and it misled people: the previously-saved collection was
+      // intact, but THESE stamps had not saved, and navigating away lost them.
       addToast({
         type: 'error',
         title: 'Could not save your stamps',
-        message: `${err instanceof Error ? err.message : 'Unknown error'}. Nothing was lost — try again.`,
+        message: `${err instanceof Error ? err.message : 'Unknown error'}. Your stamps are still on this screen — stay here and press Save again rather than navigating away.`,
+        duration: 15000,
       });
     } finally {
       setIsSaving(false);

@@ -44,7 +44,7 @@ export default function PriceMovers({ movers }: PriceMoversProps) {
                 {mover.stamp.imageUrl || mover.stamp.thumbnailUrl ? (
                   <img
                     className={styles.thumbnail}
-                    src={mover.stamp.imageUrl || (mover.stamp.thumbnailUrl ?? undefined)}
+                    src={mover.stamp.thumbnailUrl || mover.stamp.imageUrl || undefined}
                     alt={mover.stamp.identification.description}
                   />
                 ) : (

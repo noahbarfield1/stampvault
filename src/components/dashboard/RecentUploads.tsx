@@ -95,7 +95,7 @@ export default function RecentUploads({ stamps }: RecentUploadsProps) {
                 {stamp.imageUrl || stamp.thumbnailUrl ? (
                   <img
                     className={styles.image}
-                    src={(stamp.imageUrl || stamp.thumbnailUrl) ?? undefined}
+                    src={stamp.thumbnailUrl || stamp.imageUrl || undefined}
                     alt={stamp.identification.description}
                   />
                 ) : (

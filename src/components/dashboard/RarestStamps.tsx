@@ -69,7 +69,7 @@ export default function RarestStamps({ stamps }: RarestStampsProps) {
             <div className={styles.thumbnailWrapper}>
               {stamp.imageUrl || stamp.thumbnailUrl ? (
                 <img
-                  src={stamp.imageUrl || (stamp.thumbnailUrl ?? undefined)}
+                  src={stamp.thumbnailUrl || stamp.imageUrl || undefined}
                   alt={stamp.identification.description}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
