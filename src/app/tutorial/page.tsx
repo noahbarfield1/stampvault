@@ -83,7 +83,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Review the prices, then save',
-    text: 'For stamps the AI identified confidently, real eBay sold listings are searched and an estimate is aggregated from them.',
+    text: 'For stamps the AI identified confidently, current eBay listings are searched and an estimate is aggregated from what sellers are asking.',
     tips: [
       <>
         Every price links to the <strong>actual listings</strong> it came from. Open them — the
@@ -175,8 +175,17 @@ export default function TutorialPage() {
               ✓
             </span>
             <p className={styles.honestyText}>
-              <strong>Prices come from real eBay sold listings</strong>, scraped at the time you
-              ask, with a link to every listing used.
+              <strong>Prices come from real eBay listings</strong>, fetched when you
+              ask, with a link to every listing used.</p>
+          </div>
+          <div className={styles.honestyRow}>
+            <span className={styles.markNo} aria-hidden="true">
+              ✕
+            </span>
+            <p className={styles.honestyText}>
+              <strong>These are asking prices, not sale prices.</strong>{' '}eBay puts completed
+              sales behind a sign-in, so the figures come from what sellers are currently asking.
+              Asking prices skew high — an overpriced listing can sit unsold for years.
             </p>
           </div>
           <div className={styles.honestyRow}>

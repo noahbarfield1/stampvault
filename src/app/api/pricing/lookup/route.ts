@@ -109,13 +109,13 @@ export async function POST(req: NextRequest) {
         }
       : null;
 
-    // Live scrape: recent SOLD first; only fetch ACTIVE if no sales found.
+    // ONE scrape per lookup. Sold listings sit behind an eBay sign-in wall, so
+    // asking for them cost a credit and returned a login page every time — see
+    // firecrawl-provider.fetchSold. fetchSold now resolves to [] without a
+    // network call, so this is asking for active listings only.
     const provider = getListingProvider();
     const sold = await provider.fetchSold(query, 12);
-    let active: typeof sold = [];
-    if (sold.length === 0) {
-      active = await provider.fetchActive(query, 12);
-    }
+    const active = sold.length === 0 ? await provider.fetchActive(query, 12) : [];
 
     const pricing = aggregateLivePricing({ sold, active, catalog });
 

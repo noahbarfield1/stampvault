@@ -140,9 +140,10 @@ export default function PricingPanel({
         <p className={styles.valueLabel}>
           {unpriced ? 'Not priced' : basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}{' '}
           <Tooltip label="Where does this price come from?" title="Where this comes from">
-            An estimate aggregated from real eBay listings, with outliers removed. It is not an
-            appraisal — condition drives most of a stamp&rsquo;s value and a photo cannot judge
-            gum, thins or repairs.
+            Aggregated from what sellers are currently ASKING on eBay, with outliers removed.
+            Asking prices run high — unsold optimistic listings sit for years. Not an appraisal:
+            condition drives most of a stamp&rsquo;s value and a photo cannot judge gum, thins or
+            repairs.
           </Tooltip>
         </p>
         {/* A stamp we could not price must NOT render as $0.00 — that reads as
@@ -152,7 +153,7 @@ export default function PricingPanel({
           <>
             <p className={styles.valueAmount}>—</p>
             <p className={styles.valueRange}>
-              No sold listings found for this stamp right now. This is not an estimate of
+              No listings found for this stamp right now. This is not an estimate of
               zero — try Refresh, or search the catalogue number yourself.
             </p>
           </>

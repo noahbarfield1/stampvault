@@ -109,8 +109,11 @@ test('a stamp with no price shows an em dash, never $0.00', async ({ page }) => 
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
 
-  await page.goto('/dashboard');
-  await page.evaluate((stamp) => {
+  // Seed BEFORE any page script runs. Visiting a page first and then writing
+  // localStorage races the store's own persist: it can flush its freshly
+  // hydrated (empty) state back over the seed. That race passed in isolation
+  // and failed under a full parallel-ish run.
+  await page.addInitScript((stamp) => {
     localStorage.setItem(
       'stampvault-stamps',
       JSON.stringify({ state: { stamps: [stamp] }, version: 1 }),

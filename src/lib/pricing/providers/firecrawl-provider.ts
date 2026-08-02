@@ -124,8 +124,24 @@ async function fetchListings(
 export function createFirecrawlProvider(): ListingProvider {
   return {
     name: 'firecrawl',
-    fetchSold(query: StampQuery, limit: number): Promise<MarketListing[]> {
-      return fetchListings(query, limit, 'sold');
+    /**
+     * eBay gates sold/completed listings behind a sign-in wall, so an
+     * anonymous scrape of `LH_Sold=1&LH_Complete=1` returns a login page, not
+     * results. Measured 2026-08-02 for the same query:
+     *
+     *   sold   -> 1,662 chars,   0 prices, "Sign in to your account"
+     *   active -> 133,994 chars, 109 prices
+     *
+     * Attempting it burned one Firecrawl credit per lookup on a login page —
+     * half of all spend — and could never succeed. Skipped entirely rather
+     * than left to fail, since a failed scrape costs exactly as much as a
+     * successful one.
+     *
+     * Re-enable only alongside an authenticated fetch path (a signed-in
+     * session, or the official eBay Marketplace Insights API).
+     */
+    async fetchSold(): Promise<MarketListing[]> {
+      return [];
     },
     fetchActive(query: StampQuery, limit: number): Promise<MarketListing[]> {
       return fetchListings(query, limit, 'active');
