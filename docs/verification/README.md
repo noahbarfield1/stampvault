@@ -70,3 +70,29 @@ uses the existing esbuild `.check.mjs` pattern:
 - `src/lib/pricing/providers/firecrawl-parse.check.mjs`
 
 A browser harness (Playwright, device projects, axe) is still outstanding.
+
+## `2026-08-02-identification/`
+
+The first honest identification evidence since 2026-06-22, produced by
+`npm run test:live` (tests/live/identify.live.spec.ts) against a production
+build with real Vertex AI calls.
+
+**12 of 12 correct, 3 rounds per fixture, zero variance between rounds.**
+
+| Fixture | Scott returned | Correct? |
+|---|---|---|
+| IMG_4184.jpg | 814 | ✅ US 1938 9¢ Harrison Prexie |
+| stamp-4.png | 814 | ✅ same stamp, same answer |
+| stamp-2.png | 804 | ✅ US 1938 1¢ Washington Prexie |
+| inverted-jenny.jpg | C3a | ✅ the *inverted* variety, not plain C3 |
+
+Confidence 98–100%, 12–15s per stamp.
+
+Compare the previous run of record, 2026-07-03: 24 bug reports, every payload
+`country: "Unknown"`, `scottNumber: null`, `aiConfidence: 0.5`. The difference
+is the segmentation coordinate fix — Gemini emits 0-1000 box coordinates and the
+route was clamping them to 100 *before* normalising, collapsing every box to
+zero width.
+
+This run cannot pass fraudulently: the 1×1-PNG mock bypass in
+`identify/route.ts` that made the old suite green has been deleted.
