@@ -22,6 +22,20 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = 3210;
 const BASE_URL = `http://localhost:${PORT}`;
 
+/* ── The live-ai opt-in ───────────────────────────────────────────────────────
+ * `testIgnore: ['**\/live\/**']` above is per-project-overridable, and the
+ * live-ai project has to override it or `--project=live-ai` would select zero
+ * tests. The side effect was that a bare `playwright test` — i.e. `npm test` —
+ * ran the live project too, spending 12 real Vertex AI calls on every run.
+ *
+ * So the project is only *defined* when it was explicitly asked for. Selecting
+ * a project Playwright doesn't know about is a hard error, which is the right
+ * outcome: it fails loudly instead of silently billing.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const liveRequested =
+  process.argv.some((arg) => arg === 'live-ai' || arg.endsWith('=live-ai')) ||
+  process.env.PLAYWRIGHT_LIVE === '1';
+
 export default defineConfig({
   testDir: './tests',
   // `tests/live/` hits the real AI and costs money — opt in with --project=live-ai.
@@ -61,14 +75,19 @@ export default defineConfig({
       use: { ...devices['iPhone SE'], browserName: 'chromium' },
     },
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
-    {
-      // Real AI calls. Never runs by default.
-      name: 'live-ai',
-      testDir: './tests/live',
-      testIgnore: [],
-      timeout: 180_000,
-      use: { ...devices['Desktop Chrome'] },
-    },
+    // Real AI calls, and real money. Only exists when explicitly requested —
+    // see `liveRequested` above.
+    ...(liveRequested
+      ? [
+          {
+            name: 'live-ai',
+            testDir: './tests/live',
+            testIgnore: [] as string[],
+            timeout: 180_000,
+            use: { ...devices['Desktop Chrome'] },
+          },
+        ]
+      : []),
   ],
 
   webServer: {
