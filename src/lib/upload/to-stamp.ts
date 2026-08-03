@@ -101,8 +101,22 @@ export function buildIdentifiedStamp({
   index,
   now,
 }: BuildStampArgs): Partial<Stamp> {
-  const fallbackValue = ident.estimatedValue?.asIs ?? 0;
-
+  /* The model's own `estimatedValue` is deliberately NOT used as a price.
+   *
+   * It used to be: when live pricing was skipped or failed, this record stored
+   * `ident.estimatedValue.asIs` as `estimatedValue`, with a `priceRange` of
+   * exactly ±20% around it. That range had no basis of any kind, and with no
+   * `priceBasis` the detail panel renders the number under a plain "Estimated
+   * Value" heading with no badge and no sources — visually identical to a
+   * researched market price.
+   *
+   * Worse, `dashboard/page.tsx` sums `estimatedValue` across the collection
+   * into the headline "collection value", so a language model's guess about a
+   * photo silently inflated the user's portfolio total.
+   *
+   * A model guessing dollars from an image is not evidence. An unpriced stamp
+   * renders as "Not priced" with an em dash, and a real number arrives when
+   * Price Tracker runs a lookup. */
   return {
     id: ident.scottNumber
       ? `stamp-${ident.scottNumber.toLowerCase()}-${index}`
@@ -129,14 +143,11 @@ export function buildIdentifiedStamp({
     pricing:
       pricing ??
       ({
-        estimatedValue: fallbackValue,
+        estimatedValue: 0,
         currency: 'USD',
-        confidence: ident.estimatedValue?.confidence ?? 0.5,
+        confidence: 0,
         sources: [],
-        priceRange: {
-          min: fallbackValue ? fallbackValue * 0.8 : 0,
-          max: fallbackValue ? fallbackValue * 1.2 : 0,
-        },
+        priceRange: { min: 0, max: 0 },
         lastUpdated: now,
         hipValue: null,
         sourceBreakdown: {
