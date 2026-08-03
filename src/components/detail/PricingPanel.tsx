@@ -140,10 +140,12 @@ export default function PricingPanel({
         <p className={styles.valueLabel}>
           {unpriced ? 'Not priced' : basis ? TIER_HEADING[basis.tier] : 'Estimated Value'}{' '}
           <Tooltip label="Where does this price come from?" title="Where this comes from">
-            Aggregated from what sellers are currently ASKING on eBay, with outliers removed.
-            Asking prices run high — unsold optimistic listings sit for years. Not an appraisal:
-            condition drives most of a stamp&rsquo;s value and a photo cannot judge gum, thins or
-            repairs.
+            Aggregated from what sellers are currently ASKING on eBay for this catalogue number,
+            with outliers removed. Asking prices run high — unsold optimistic listings sit for
+            years. Comparables are matched to your stamp&rsquo;s condition where enough exist;
+            the badge says <em>mixed condition</em> when there were too few and mint and used had
+            to be averaged together. Not an appraisal: condition drives most of a stamp&rsquo;s
+            value, and a photo cannot judge gum, thins or repairs.
           </Tooltip>
         </p>
         {/* A stamp we could not price must NOT render as $0.00 — that reads as

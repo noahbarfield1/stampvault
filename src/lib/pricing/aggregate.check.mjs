@@ -156,10 +156,11 @@ check('recency boundary: 731 days ago does NOT count as live', () => {
 
 /* ─── 3. No recent sold, active present -> tier 'active' ──────────────── */
 
-check('no recent sold but active present -> active tier', () => {
+check('no recent sold but enough active listings -> active tier', () => {
   const active = [
     activeListing({ price: 15 }),
     activeListing({ price: 25 }),
+    activeListing({ price: 20 }),
   ];
   const result = aggregateLivePricing({
     sold: [],
@@ -168,8 +169,53 @@ check('no recent sold but active present -> active tier', () => {
   });
 
   assertEqual(result.priceBasis.tier, 'active', 'tier');
-  assertEqual(result.priceBasis.sampleSize, 2, 'sampleSize');
+  assertEqual(result.priceBasis.sampleSize, 3, 'sampleSize');
   assertEqual(result.priceBasis.asOf, null, 'asOf');
+});
+
+/* ─── 3b. Too few active listings is not a market ─────────────────────── */
+
+check('fewer than MIN_ACTIVE_SAMPLE asking prices does NOT set a market price', () => {
+  // Scott C3a: after replicas and souvenirs were filtered out, one $43.50
+  // listing (an auction catalogue, not the stamp) was reporting the value of
+  // a ~$1.5M rarity. One asking price is an anecdote, not a market.
+  const result = aggregateLivePricing({
+    sold: [],
+    active: [activeListing({ price: 43.5 }), activeListing({ price: 23 })],
+    catalog: { value: 1500000, label: 'Catalog value' },
+    referenceTime: REFERENCE_TIME,
+  });
+
+  assertEqual(result.priceBasis.tier, 'catalog', 'tier');
+  assertEqual(result.priceBasis.value, 1500000, 'value');
+});
+
+check('too few active listings and no catalog -> honest no-data, not a number', () => {
+  const result = aggregateLivePricing({
+    sold: [],
+    active: [activeListing({ price: 43.5 })],
+    referenceTime: REFERENCE_TIME,
+  });
+
+  if (result.priceBasis.tier === 'active') {
+    throw new Error('a single asking price was reported as the market value');
+  }
+  assertEqual(result.priceBasis.value, 0, 'value');
+});
+
+/* ─── 3c. A single completed SALE is still evidence ───────────────────── */
+
+check('one recent sold listing still prices the stamp', () => {
+  // The threshold applies to asking prices only: a completed sale means
+  // somebody actually paid that.
+  const result = aggregateLivePricing({
+    sold: [soldListing({ price: 12, soldDate: daysAgoISO(30) })],
+    active: [],
+    referenceTime: REFERENCE_TIME,
+  });
+
+  assertEqual(result.priceBasis.tier, 'live_sold', 'tier');
+  assertEqual(result.priceBasis.value, 12, 'value');
 });
 
 /* ─── 4. Only old sold (>730d) -> tier 'last_sold' ────────────────────── */
@@ -243,6 +289,37 @@ check('removeOutliersIQR() drops points beyond 1.5*IQR', () => {
   // bounds: [2-4.5, 5+4.5] = [-2.5, 9.5] -> 100 is dropped
   const result = removeOutliersIQR([1, 2, 3, 4, 5, 100]);
   assertEqual(result, [1, 2, 3, 4, 5], 'outlier 100 removed');
+});
+
+/* ─── Condition label ──────────────────────────────────────────────────── */
+
+check('the tier label states which condition was compared', () => {
+  const active = [
+    activeListing({ price: 2 }),
+    activeListing({ price: 2.1 }),
+    activeListing({ price: 1.9 }),
+  ];
+
+  const matched = aggregateLivePricing({
+    sold: [], active, conditionLabel: 'used', referenceTime: REFERENCE_TIME,
+  });
+  if (!matched.priceBasis.label.includes('used')) {
+    throw new Error(`label omitted the condition: "${matched.priceBasis.label}"`);
+  }
+
+  // "12 active" and "12 active · mixed condition" are very different claims;
+  // the second must not be able to pose as the first.
+  const mixed = aggregateLivePricing({
+    sold: [], active, conditionLabel: 'mixed condition', referenceTime: REFERENCE_TIME,
+  });
+  if (!mixed.priceBasis.label.includes('mixed condition')) {
+    throw new Error(`label hid the fallback: "${mixed.priceBasis.label}"`);
+  }
+
+  const none = aggregateLivePricing({ sold: [], active, referenceTime: REFERENCE_TIME });
+  if (/condition|used|mint/i.test(none.priceBasis.label)) {
+    throw new Error(`invented a condition claim: "${none.priceBasis.label}"`);
+  }
 });
 
 /* ─── Summary ──────────────────────────────────────────────────────────── */

@@ -23,6 +23,28 @@ import type {
 /** A "sold" listing counts as live pricing evidence within this window. */
 export const RECENCY_DAYS = 730;
 
+/**
+ * How many current listings it takes before asking prices count as a market.
+ *
+ * Asking prices are the weakest live evidence — anyone can list anything at
+ * any number, and nobody has agreed to pay it. One or two of them is not a
+ * market, it is an anecdote.
+ *
+ * This exists because of Scott C3a, the Inverted Jenny. Genuine examples sell
+ * for around $1.5M and essentially never appear on eBay, so once replicas and
+ * souvenirs were filtered out the only survivor was a single $43.50 listing —
+ * for a 2021 Siegel auction *catalogue*, not the stamp. The app reported
+ * $43.50 as the value of a $1.5M rarity.
+ *
+ * No keyword list converges on that problem; requiring a sample does. Below
+ * this threshold the ladder falls through to catalogue value, or to an honest
+ * "no market data", both of which are correct answers.
+ *
+ * Sold listings are deliberately NOT subject to this: a completed sale is
+ * evidence that someone actually paid, so even one is worth reporting.
+ */
+export const MIN_ACTIVE_SAMPLE = 3;
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const KNOWN_SOURCE_PLATFORMS: readonly PriceSourcePlatform[] = [
@@ -192,6 +214,13 @@ export function aggregateLivePricing(params: {
   } | null;
   /** Epoch ms; default Date.now(). Injectable for tests. */
   referenceTime?: number;
+  /**
+   * What condition the comparables represent — `'used'`, `'mint'`, or
+   * `'mixed condition'` when there were too few of the requested one to price
+   * from. Appended to the tier label, because "$1.99, 12 active" and
+   * "$1.99, 12 active, mixed condition" are very different claims.
+   */
+  conditionLabel?: string | null;
 }): PriceData {
   const referenceTime = params.referenceTime ?? Date.now();
   const lastUpdated = new Date(referenceTime).toISOString();
@@ -231,17 +260,19 @@ export function aggregateLivePricing(params: {
       proof: toProof(proofSource),
     };
     tierPrices = filtered;
-  } else if (usdActive.length > 0) {
-    // Tier 2: no recent sales, but current asking prices exist.
+  } else if (usdActive.length >= MIN_ACTIVE_SAMPLE) {
+    // Tier 2: no recent sales, but enough current asking prices to be a market.
     const filtered = removeOutliersIQR(usdActive.map((s) => s.price));
     const value = round2(median(filtered));
     const proofSource = usdActive.reduce((nearest, cur) =>
       Math.abs(cur.price - value) < Math.abs(nearest.price - value) ? cur : nearest
     );
 
+    const conditionSuffix = params.conditionLabel ? ` · ${params.conditionLabel}` : '';
+
     priceBasis = {
       tier: 'active',
-      label: `Currently listed (asking) · ${usdActive.length} active`,
+      label: `Currently listed (asking) · ${usdActive.length} active${conditionSuffix}`,
       value,
       currency: 'USD',
       asOf: null,
