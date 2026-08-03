@@ -27,6 +27,31 @@ const SOLD_DATE_RE = /Sold\s+([A-Za-z]{3,9})\s+(\d{1,2}),\s+(\d{4})/;
 /** e.g. "$1,234.56" — requires cents so it doesn't match stray "$" text. */
 const PRICE_RE = /\$([\d,]+\.\d{2})/;
 
+/**
+ * eBay's accessibility affordances, glued straight onto the title text with no
+ * separator: `...1938, usedOpens in a new window or tab`. Two problems —
+ *
+ *   1. It is shown to the user. Every price-proof title in the app carried a
+ *      trailing "Opens in a new window or tab".
+ *   2. It destroys the word boundary at the end of the real title, so
+ *      `REPRODUCTION` became `REPRODUCTIONOpens` and slipped past a `\b`-
+ *      anchored filter meant to reject replicas.
+ *
+ * `New Listing` is prefixed the same way, at the front.
+ */
+const TITLE_NOISE = [
+  /Opens in a new window or tab\s*$/i,
+  /\s*Opens in a new window or tab/i,
+  /^New Listing/i,
+  /^watch\s+/i,
+];
+
+function cleanTitle(raw: string): string {
+  let title = raw.trim();
+  for (const pattern of TITLE_NOISE) title = title.replace(pattern, '');
+  return title.replace(/\s{2,}/g, ' ').trim();
+}
+
 /** The plain-text title link that follows the image anchor, e.g. "[Title](https://www.ebay.com/itm/123...)" */
 const TITLE_LINK_RE = /^\[([^\]]+)\]\(https:\/\/(?:www\.)?ebay\.com\/itm\/\d+/m;
 
@@ -109,7 +134,7 @@ export function parseEbayListings(
     if (price === null) continue;
 
     const titleMatch = TITLE_LINK_RE.exec(cardText);
-    const title = (titleMatch?.[1] ?? anchor.alt).trim();
+    const title = cleanTitle(titleMatch?.[1] ?? anchor.alt);
     if (!title) continue;
 
     seenIds.add(anchor.itemId);

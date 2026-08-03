@@ -6,10 +6,15 @@
 
 import type { ListingProvider, MarketListing, StampQuery } from './types';
 import { parseEbayListings } from './firecrawl-parse';
+import { buildEbayQuery } from './ebay-provider';
 
 const FIRECRAWL_SCRAPE_URL = 'https://api.firecrawl.dev/v2/scrape';
 const REQUEST_TIMEOUT_MS = 25_000;
-const DESCRIPTION_WORD_LIMIT = 6;
+
+/** eBay's Stamps category. Without it, `_sacat=0` searches the whole site and a
+ *  bare catalogue number matches manufacturer part numbers — a live lookup for
+ *  Scott 814 returned a conductivity electrode and a pair of work boots. */
+const EBAY_CATEGORY_STAMPS = '260';
 
 let warnedMissingKey = false;
 
@@ -21,25 +26,17 @@ interface FirecrawlScrapeResponse {
 }
 
 /**
- * Builds the eBay `_nkw` search query from a StampQuery: Scott number,
- * country, denomination, and the first few words of the description,
- * space-joined (empty/missing fields are dropped).
+ * Builds the eBay `_nkw` search query.
+ *
+ * Shares `buildEbayQuery` with the API provider deliberately, so both sources
+ * search for the same thing. The old local builder appended six words of the
+ * AI's prose description, producing queries like
+ * "RW8 United States A United States revenue stamp, commonly" — which matches
+ * poorly and spends a credit doing it.
  */
-function buildSearchQuery(query: StampQuery): string {
-  const descriptionWords = query.description
-    ? query.description.trim().split(/\s+/).slice(0, DESCRIPTION_WORD_LIMIT).join(' ')
-    : null;
-
-  const parts = [query.scottNumber, query.country, query.denomination, descriptionWords].filter(
-    (part): part is string => Boolean(part && part.trim().length > 0)
-  );
-
-  return parts.join(' ').trim();
-}
-
-function buildSearchUrl(query: StampQuery, listingType: 'sold' | 'active'): string {
-  const q = encodeURIComponent(buildSearchQuery(query));
-  const base = `https://www.ebay.com/sch/i.html?_nkw=${q}&_sacat=0`;
+export function buildSearchUrl(query: StampQuery, listingType: 'sold' | 'active'): string {
+  const q = encodeURIComponent(buildEbayQuery(query));
+  const base = `https://www.ebay.com/sch/i.html?_nkw=${q}&_sacat=${EBAY_CATEGORY_STAMPS}`;
   return listingType === 'sold' ? `${base}&LH_Sold=1&LH_Complete=1` : base;
 }
 
