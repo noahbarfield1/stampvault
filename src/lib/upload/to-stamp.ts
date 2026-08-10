@@ -76,6 +76,23 @@ export function resolveReferenceImage(ident: RawIdentification): string | null {
   return null;
 }
 
+/**
+ * Compact, document-id-safe token for a batch.
+ *
+ * The raw ISO timestamp works but carries ':' and '.', which are awkward in a
+ * Firestore document id and in a URL. Epoch-milliseconds in base 36 is short,
+ * ordered, and alphanumeric.
+ */
+function batchToken(now: string): string {
+  const ms = Date.parse(now);
+  return Number.isFinite(ms) ? ms.toString(36) : 'nobatch';
+}
+
+/** Strip anything that cannot sit in a document id or a URL segment. */
+function idSafe(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'x';
+}
+
 export interface BuildStampArgs {
   ident: RawIdentification;
   imageDataUrl: string;
@@ -95,9 +112,19 @@ export interface BuildStampArgs {
 /**
  * Build the identified-stamp record shown in the review summary.
  *
- * The id is suffixed with `index`: two confirmed detections can identify as the
- * same Scott number (duplicate photos of one stamp), and a bare
- * `stamp-${scottNumber}` id collided and silently overwrote one with the other.
+ * The id carries BOTH the batch token and `index`, and it needs both.
+ *
+ * `index` separates two confirmed detections that identify as the same Scott
+ * number — duplicate photos of one stamp within a single upload. The batch
+ * token separates uploads: with only `index`, photographing Scott 814 first in
+ * two different sessions produced `stamp-814-0` both times, and addStamp's
+ * upsert-by-id silently REPLACED the earlier stamp. A saved stamp disappeared
+ * with no error.
+ *
+ * The upsert itself is still correct — re-importing an exported collection
+ * must not duplicate rows, and those ids are preserved on export. What changed
+ * is only that two genuinely separate uploads now produce two records, which
+ * is the honest outcome: silently losing one was never right.
  */
 export function buildIdentifiedStamp({
   ident,
@@ -125,8 +152,8 @@ export function buildIdentifiedStamp({
    * Price Tracker runs a lookup. */
   return {
     id: ident.scottNumber
-      ? `stamp-${ident.scottNumber.toLowerCase()}-${index}`
-      : `stamp-${now}-${index}`,
+      ? `stamp-${idSafe(ident.scottNumber)}-${batchToken(now)}-${index}`
+      : `stamp-${batchToken(now)}-${index}`,
     imageUrl: imageDataUrl,
     identification: {
       country: ident.country || 'Unknown',

@@ -35,12 +35,14 @@ let filterRelevantListings;
 let classifyListingCondition;
 let normalizeQueryCondition;
 let splitByCondition;
+let looksLikeMultiStampLot;
 try {
   ({
     filterRelevantListings,
     classifyListingCondition,
     normalizeQueryCondition,
     splitByCondition,
+    looksLikeMultiStampLot,
   } = await import(pathToFileURL(outfile).href));
 } finally {
   fs.rmSync(outfile, { force: true });
@@ -325,6 +327,51 @@ check('an unknown requested condition filters nothing and claims nothing', () =>
   const split = splitByCondition(input, 'very_fine', 3);
   assert(split.listings.length === 2, 'filtered on a grade');
   assert(split.matched === false && split.label === null, 'labelled a non-comparison');
+});
+
+/* ── Lot notations the enumerated-run pattern cannot see ────────────────
+ * Found 2026-08-09 in a live Scott 245 lookup. This title is verbatim:
+ *
+ *   US Stamp Scott #230//245, Columbian Exposition Issue, Lot of 3
+ *
+ * It priced a multi-stamp lot at $107.70 as a single $5 Columbian, setting the
+ * floor of the range and dragging the headline down. ENUMERATED_RUN needs three
+ * comma-separated numbers, so neither the `//` range nor the words "Lot of"
+ * register. The three-number threshold is deliberate — pairs and plate blocks
+ * are legitimately one item — so these are added alongside it, not by loosening
+ * it. */
+
+check('the philatelic // range notation reads as a lot', () => {
+  assert(
+    looksLikeMultiStampLot('US Stamp Scott #230//245, Columbian Exposition Issue, Lot of 3'),
+    'the verbatim production title was not caught',
+  );
+  assert(looksLikeMultiStampLot('Scott 230//245 Columbian'), 'bare // range missed');
+  assert(looksLikeMultiStampLot('Scott 230 // 245 Columbian'), 'spaced // range missed');
+});
+
+check('an explicit "lot of" reads as a lot', () => {
+  assert(looksLikeMultiStampLot('US Scott 814 Lot of 25'), 'lower-case "lot of" missed');
+  assert(looksLikeMultiStampLot('Scott 814 LOT OF 10 stamps'), 'upper-case missed');
+  assert(looksLikeMultiStampLot('Scott 814 lots of 5'), 'plural "lots of" missed');
+});
+
+check('single stamps are still not lots', () => {
+  // Regressions to guard: every one of these is a legitimate comparable, and
+  // over-filtering empties the list and drops the stamp to the catalog tier.
+  assert(!looksLikeMultiStampLot('Scott# 814 9c Harrison Used Stamp Pair 1938-43'), 'pair rejected');
+  assert(!looksLikeMultiStampLot('United States, Scott 814, William H Harrison, 1938, used'), 'single rejected');
+  assert(!looksLikeMultiStampLot('Scott 814 - Mint NH'), 'hyphen-suffixed single rejected');
+  assert(!looksLikeMultiStampLot('US Scott C13, Mint Never Hinged, Fine - Very Fine+'), 'graded single rejected');
+  // "a lot" as prose is not a quantity claim.
+  assert(!looksLikeMultiStampLot('Scott 814 with a lot of nice centering'), 'prose "a lot of" caught');
+});
+
+check('the three-number enumerated run still fires', () => {
+  assert(
+    looksLikeMultiStampLot('Scott Catalog #808, 809, 810,813 & 814 MNH'),
+    'the original enumerated-run case regressed',
+  );
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

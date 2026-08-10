@@ -79,8 +79,27 @@ export function catalogNumberPattern(scottNumber: string): RegExp {
  */
 const ENUMERATED_RUN = /\d{1,4}[a-z]?(?:\s*[,&]\s*(?:and\s*)?#?\s*\d{1,4}[a-z]?){2,}/i;
 
+/**
+ * The philatelic range notation: `230//245` means "230 through 245, not all
+ * inclusive" — a run of stamps sold together, never a single item.
+ *
+ * Only `//` counts. A single slash appears in unrelated seller shorthand, and a
+ * hyphen range is already handled by catalogNumberPattern, which rejects
+ * `814-816` while keeping the very common `Scott 814 - Mint NH` title form.
+ */
+const SLASH_RANGE = /\d{1,4}[a-z]?\s*\/\/\s*\d{1,4}[a-z]?/i;
+
+/**
+ * An explicit quantity claim: "Lot of 25", "lots of 5".
+ *
+ * Requires a following number so that prose like "a lot of nice centering"
+ * does not match. Guarding on the preceding word is not enough — sellers write
+ * "Lot of" mid-title as often as at the start.
+ */
+const EXPLICIT_LOT = /\blots?\s+of\s+\d+/i;
+
 export function looksLikeMultiStampLot(title: string): boolean {
-  return ENUMERATED_RUN.test(title);
+  return ENUMERATED_RUN.test(title) || SLASH_RANGE.test(title) || EXPLICIT_LOT.test(title);
 }
 
 /**

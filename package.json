@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node src/lib/segmentation/normalize.check.mjs && node src/lib/pricing/aggregate.check.mjs && node src/lib/pricing/relevance.check.mjs && node src/lib/pricing/eligibility.check.mjs && node src/lib/pricing/price-cache.check.mjs && node src/lib/storage/persist-guards.check.mjs && node src/lib/pricing/providers/firecrawl-parse.check.mjs && node src/lib/pricing/providers/firecrawl-url.check.mjs && node src/lib/pricing/providers/ebay-provider.check.mjs",
+    "test:unit": "node src/lib/segmentation/normalize.check.mjs && node src/lib/pricing/aggregate.check.mjs && node src/lib/pricing/relevance.check.mjs && node src/lib/pricing/eligibility.check.mjs && node src/lib/pricing/price-cache.check.mjs && node src/lib/storage/persist-guards.check.mjs && node src/lib/upload/to-stamp.check.mjs && node src/lib/pricing/providers/firecrawl-parse.check.mjs && node src/lib/pricing/providers/firecrawl-url.check.mjs && node src/lib/pricing/providers/ebay-provider.check.mjs",
     "test:e2e": "playwright test",
     "test:live": "playwright test --project=live-ai",
     "test": "npm run typecheck && npm run test:unit && npm run test:e2e"
