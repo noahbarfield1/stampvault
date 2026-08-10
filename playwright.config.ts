@@ -32,9 +32,22 @@ const BASE_URL = `http://localhost:${PORT}`;
  * a project Playwright doesn't know about is a hard error, which is the right
  * outcome: it fails loudly instead of silently billing.
  * ──────────────────────────────────────────────────────────────────────────── */
-const liveRequested =
-  process.argv.some((arg) => arg === 'live-ai' || arg.endsWith('=live-ai')) ||
-  process.env.PLAYWRIGHT_LIVE === '1';
+/*
+ * Sniffing argv looks like it works and does not: Playwright re-evaluates this
+ * config inside each WORKER process, whose argv does not carry `--project`. The
+ * main process therefore defined `live-ai` while the worker did not, and the
+ * run died with "Project live-ai not found in the worker process" before
+ * spending a cent — so `npm run test:live` was broken outright.
+ *
+ * Environment IS inherited by workers, so the flag is set here, in the main
+ * process, before the projects array is built. Both entry points then agree:
+ *
+ *     npm run test:live
+ *     PLAYWRIGHT_LIVE=1 npx playwright test --project=live-ai
+ */
+const liveArgv = process.argv.some((arg) => arg === 'live-ai' || arg.endsWith('=live-ai'));
+if (liveArgv) process.env.PLAYWRIGHT_LIVE = '1';
+const liveRequested = process.env.PLAYWRIGHT_LIVE === '1';
 
 export default defineConfig({
   testDir: './tests',
