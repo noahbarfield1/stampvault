@@ -19,6 +19,14 @@ import { VERIFIED_STAMPS } from '@/lib/pricing/verified-database';
 import { getListingProvider, type StampQuery } from '@/lib/pricing/providers';
 import { aggregateLivePricing, MIN_ACTIVE_SAMPLE } from '@/lib/pricing/aggregate';
 import { filterRelevantListings, splitByCondition } from '@/lib/pricing/relevance';
+import {
+  priceCacheKey,
+  isFresh,
+  toCachedPriceData,
+  PRICE_CACHE_TTL_MS,
+  type CachedPriceRecord,
+} from '@/lib/pricing/price-cache';
+import { readCachedPrice, writeCachedPrice } from '@/lib/pricing/price-cache-store';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -110,6 +118,31 @@ export async function POST(req: NextRequest) {
         }
       : null;
 
+    // The durable cache is checked BEFORE spending a scrape. The in-process Map
+    // above dies with every serverless cold start, so production re-scrapes —
+    // and pays a Firecrawl credit — for stamps it has already priced.
+    const durableKey = priceCacheKey(query);
+    if (durableKey && !body.forceRefresh) {
+      const remembered = await readCachedPrice(durableKey);
+      if (remembered && isFresh(remembered, PRICE_CACHE_TTL_MS, Date.now())) {
+        const pricing = toCachedPriceData(remembered, Date.now());
+        setCached(JSON.stringify(query), pricing);
+        return NextResponse.json({
+          pricing,
+          cached: true,
+          provider: 'price-cache',
+          sourcesUsed: {
+            sold: 0,
+            active: 0,
+            catalog: false,
+            droppedAsIrrelevant: 0,
+            conditionMatched: false,
+          },
+          totalListings: pricing.sources.length,
+        });
+      }
+    }
+
     // ONE scrape per lookup. Sold listings sit behind an eBay sign-in wall, so
     // asking for them cost a credit and returned a login page every time — see
     // firecrawl-provider.fetchSold. fetchSold now resolves to [] without a
@@ -117,8 +150,12 @@ export async function POST(req: NextRequest) {
     const provider = getListingProvider();
     // Over-fetch: the relevance filter below discards the wrong stamp, and
     // eBay keyword search returns a majority of those. 12 in, ~5 usable out.
-    const soldRaw = await provider.fetchSold(query, 30);
-    const activeRaw = soldRaw.length === 0 ? await provider.fetchActive(query, 30) : [];
+    // Raised from 30 to the provider ceiling. This costs nothing extra — the
+    // page is scraped either way and eBay Browse bills per call, not per result
+    // — and a wider sample survives the relevance filter, which discards the
+    // majority of eBay's fuzzy keyword matches. More comparables, same spend.
+    const soldRaw = await provider.fetchSold(query, 50);
+    const activeRaw = soldRaw.length === 0 ? await provider.fetchActive(query, 50) : [];
 
     // eBay keyword search is fuzzy even inside the Stamps category — a live
     // lookup for Scott 814 measured only 42% of results actually mentioning
@@ -156,6 +193,37 @@ export async function POST(req: NextRequest) {
     // billing outage gets baked in as "this stamp has no price" for 24 hours.
     const unavailable = takeProviderUnavailableReason();
     if (!unavailable) setCached(cacheKey, pricing);
+
+    // Remember this observation so the next collector holding the same stamp
+    // gets a fallback instead of nothing — and so we do not pay to scrape it
+    // again. Only genuine live results are stored: caching a catalog-tier or
+    // empty result would turn "we found nothing today" into a durable claim
+    // about the stamp. Not awaited — a cache write must never slow or fail the
+    // response, and writeCachedPrice resolves rather than rejects.
+    const liveTier = pricing.priceBasis?.tier;
+    const cacheable =
+      !unavailable &&
+      durableKey &&
+      pricing.estimatedValue > 0 &&
+      pricing.sources.length > 0 &&
+      (liveTier === 'active' || liveTier === 'live_sold' || liveTier === 'last_sold');
+
+    if (cacheable) {
+      const record: CachedPriceRecord = {
+        estimatedValue: pricing.estimatedValue,
+        priceRange: pricing.priceRange,
+        sampleSize: pricing.priceBasis?.sampleSize ?? pricing.sources.length,
+        fetchedAt: Date.now(),
+        sources: pricing.sources.slice(0, 5).map((s) => ({
+          platform: s.platform,
+          price: s.price,
+          url: s.url,
+          title: s.title ?? null,
+          imageUrl: s.imageUrl ?? null,
+        })),
+      };
+      void writeCachedPrice(durableKey, record);
+    }
 
     return NextResponse.json({
       pricing,

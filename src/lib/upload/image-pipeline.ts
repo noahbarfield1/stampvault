@@ -133,12 +133,23 @@ export async function resizeImageForUpload(
   return out ?? original;
 }
 
-/** Produce a small thumbnail from an existing image data URL. */
+/**
+ * Produce a small thumbnail from an existing image data URL, or null when the
+ * browser cannot make one.
+ *
+ * Returns null rather than falling back to `dataUrl`. That fallback shipped,
+ * and it was the cause of the 2026-08-09 "quota has been exceeded" save
+ * failures: `drawToDataUrl` returns null whenever `canvas.getContext('2d')`
+ * fails — routine on iOS Safari under the memory pressure of a multi-photo
+ * batch — so callers received the original 80-200KB crop believing it was a
+ * ~20KB thumbnail, and persisted it. A caller can handle "no thumbnail"; it
+ * cannot detect an impostor.
+ */
 export async function makeThumbnail(
   dataUrl: string,
   maxDimension = THUMBNAIL_MAX_DIMENSION,
   quality = THUMBNAIL_QUALITY,
-): Promise<string> {
+): Promise<string | null> {
   const img = await loadImage(dataUrl);
   const scale = Math.min(
     1,
@@ -154,7 +165,7 @@ export async function makeThumbnail(
     img.naturalHeight * scale,
     quality,
   );
-  return out ?? dataUrl;
+  return out;
 }
 
 /**

@@ -65,7 +65,12 @@ export interface PriceSource {
  * used as link + image proof. Populated by the live-pricing aggregator.
  */
 export interface PriceBasis {
-  tier: 'live_sold' | 'active' | 'last_sold' | 'catalog';
+  /**
+   * `cached` is a price this app observed live at some earlier date and stored,
+   * so it is a dated observation rather than a current one. It ranks below
+   * `active` and carries its own decayed confidence — see price-cache.ts.
+   */
+  tier: 'live_sold' | 'active' | 'last_sold' | 'catalog' | 'cached';
   /** Human-readable badge, e.g. "Live sold · median of 6 sales (Mar 2025)". */
   label: string;
   value: number;
@@ -152,6 +157,15 @@ export interface Stamp {
   /* pricing */
   pricing: PriceData | null;
   priceHistory: PriceHistoryEntry[];
+  /**
+   * Why this stamp carries no price, when that is a decision rather than a
+   * market fact — identification too weak to search on, or the lookup could not
+   * run. Null when a real lookup happened, whatever it returned.
+   *
+   * Exists so the UI can stop rendering "we did not check" and "nothing is for
+   * sale" as the same em dash.
+   */
+  notPricedReason?: string | null;
 
   /* user metadata */
   notes: string;

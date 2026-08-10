@@ -10,6 +10,7 @@ import GoldButton from '@/components/ui/GoldButton';
 import type { Stamp } from '@/types/stamp';
 import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
+import { pricingEligibility } from '@/lib/pricing/eligibility';
 import styles from './prices.module.css';
 import { usePageChrome } from '@/hooks/usePageChrome';
 
@@ -195,11 +196,17 @@ export default function PricesPage() {
    * and expensive.
    */
   const handleRefresh = async () => {
+    // Same rule as the upload wizard, from the same module. These two screens
+    // previously disagreed — upload additionally demanded aiConfidence >= 0.5 —
+    // so a stamp could be unpriceable here and priceable there, or vice versa.
     const targets = stamps.filter(
       (s) =>
-        s.identification.country &&
-        s.identification.country !== 'Unknown' &&
-        s.identification.status !== 'failed',
+        s.identification.status !== 'failed' &&
+        pricingEligibility({
+          country: s.identification.country,
+          scottNumber: s.identification.scottNumber,
+          aiConfidence: s.identification.confidence,
+        }).eligible,
     );
 
     if (targets.length === 0) {
@@ -240,7 +247,8 @@ export default function PricesPage() {
           // Distinguish "could not check" from "nothing for sale".
           if (unavailableReason) blocked = unavailableReason;
           if (pricing) {
-            updateStamp(stamp.id, { pricing });
+            // A real price supersedes whatever excuse was recorded at upload.
+            updateStamp(stamp.id, { pricing, notPricedReason: null });
             updated++;
           } else {
             failed++;

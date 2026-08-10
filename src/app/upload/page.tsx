@@ -23,7 +23,7 @@ import {
   SEGMENT_QUALITY,
 } from '@/lib/upload/image-pipeline';
 import { segmentImage, describeSegmentFailure, type SegmentOutcome } from '@/lib/upload/segment-client';
-import { identifyStamp, isIdentified, lookupPricing } from '@/lib/upload/identify-client';
+import { identifyStamp, pricingEligibility, lookupPricing } from '@/lib/upload/identify-client';
 import { buildIdentifiedStamp, buildFailedStamp, toFullStamp } from '@/lib/upload/to-stamp';
 import { requestPersistentStorage } from '@/lib/storage/image-store';
 import { usePageChrome } from '@/hooks/usePageChrome';
@@ -274,15 +274,35 @@ export default function UploadPage() {
       try {
         const ident = await identifyStamp(image, controller.signal);
         let pricing: Stamp['pricing'] | null = null;
-        if (isIdentified(ident)) {
+        // Why this stamp has no price, recorded per stamp. A stamp can be read
+        // correctly and still be skipped — and rendering that as a bare em dash
+        // is indistinguishable from "worthless", which is what prompted the
+        // 2026-08-09 report of stamps saving with no price and no explanation.
+        let notPricedReason: string | null = null;
+        const eligibility = pricingEligibility(ident);
+        if (eligibility.eligible) {
           const lookup = await lookupPricing(ident, { signal: controller.signal });
           pricing = (lookup.pricing as Stamp['pricing'] | null) ?? null;
           // Remember WHY pricing is missing. Without this the user is told
           // "no listings found" when the truth is that the lookup service is
           // out of credits — so a whole album reads as worthless.
-          if (lookup.unavailableReason) pricingUnavailable = lookup.unavailableReason;
+          if (lookup.unavailableReason) {
+            pricingUnavailable = lookup.unavailableReason;
+            notPricedReason = lookup.unavailableReason;
+          }
+        } else {
+          notPricedReason = eligibility.reason;
         }
-        results.push(buildIdentifiedStamp({ ident, imageDataUrl: image, pricing, index: idx, now }));
+        results.push(
+          buildIdentifiedStamp({
+            ident,
+            imageDataUrl: image,
+            pricing,
+            notPricedReason,
+            index: idx,
+            now,
+          }),
+        );
         session.setIdentifyStatus(target.id, 'done');
       } catch (err) {
         if (controller.signal.aborted) break;
@@ -322,33 +342,63 @@ export default function UploadPage() {
     // Ask the browser to keep this data. Safari evicts non-persistent site
     // storage after ~7 days of no visits, and Chrome sheds it under pressure.
     void requestPersistentStorage();
-    try {
-      for (const partial of identified) {
+    // Save each stamp independently. The loop used to abort on the first
+    // failure, so a quota error on stamp 2 of 5 left exactly one stamp saved
+    // and silently discarded the rest — which is what "only 1 stamp loaded a
+    // price" turned out to be. One stamp failing must not cost the others.
+    const failures: string[] = [];
+    let saved = 0;
+
+    for (const partial of identified) {
+      try {
         // A real thumbnail. Previously the full multi-MB crop data URL was
         // stored in BOTH imageUrl and thumbnailUrl, which blew Safari's ~5MB
         // localStorage quota after two or three photos — and zustand's persist
         // middleware swallowed the QuotaExceededError, so the app navigated
         // away and the stamps were simply gone on reload.
-        const thumbnailUrl = partial.imageUrl
-          ? await makeThumbnail(partial.imageUrl)
-          : '/mock/stamps/no-image.svg';
+        //
+        // makeThumbnail returns null when the browser cannot allocate a canvas.
+        // Fall back to the placeholder, never to the full crop: persisting that
+        // is precisely what exhausted the quota.
+        const thumbnail = partial.imageUrl ? await makeThumbnail(partial.imageUrl) : null;
+        const thumbnailUrl = thumbnail ?? '/mock/stamps/no-image.svg';
         addStamp(toFullStamp(partial, { userId: 'local', thumbnailUrl, now }));
+        saved++;
+      } catch (err) {
+        const label = partial.identification?.scottNumber
+          ? `Scott ${partial.identification.scottNumber}`
+          : (partial.identification?.country ?? 'a stamp');
+        failures.push(label);
+        console.error('[upload] save failed for', label, err);
       }
+    }
+
+    setIsSaving(false);
+
+    if (failures.length === 0) {
       session.reset();
       router.push('/collection');
-    } catch (err) {
-      // Stay put and keep the results on screen. "Nothing was lost" was the
-      // old wording and it misled people: the previously-saved collection was
-      // intact, but THESE stamps had not saved, and navigating away lost them.
-      addToast({
-        type: 'error',
-        title: 'Could not save your stamps',
-        message: `${err instanceof Error ? err.message : 'Unknown error'}. Your stamps are still on this screen — stay here and press Save again rather than navigating away.`,
-        duration: 15000,
-      });
-    } finally {
-      setIsSaving(false);
+      return;
     }
+
+    // Stay put and keep the results on screen. "Nothing was lost" was the old
+    // wording and it misled people: the previously-saved collection was intact,
+    // but THESE stamps had not saved, and navigating away lost them.
+    //
+    // Name the ones that failed. A generic message left the user unable to tell
+    // which stamps made it, so the only safe assumption was that none had.
+    addToast({
+      type: 'error',
+      title:
+        saved > 0
+          ? `Saved ${saved} of ${identified.length} stamps`
+          : 'Could not save your stamps',
+      message:
+        `${failures.join(', ')} could not be saved — this device is out of storage space. ` +
+        'Freeing space in the collection, or turning on cloud sync in Settings, will let the rest save. ' +
+        'Your stamps are still on this screen — stay here rather than navigating away.',
+      duration: 15000,
+    });
   }, [identified, addStamp, session, router, addToast]);
 
   const handleUpdateStamp = useCallback(

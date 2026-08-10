@@ -47,6 +47,19 @@ service cloud.firestore {
       }
     }
 
+    // Remembered market prices, shared across every collector. Written ONLY by
+    // the server through the Admin SDK, which bypasses these rules entirely.
+    //
+    // Denying the client both reads and writes is deliberate. Writes, because a
+    // browser that could write here could poison the fallback price of every
+    // stamp for everyone. Reads, because the pricing route is the only thing
+    // that should serve these — it applies the freshness check and relabels the
+    // record as a dated observation, and a client reading raw documents would
+    // bypass both and render a stale number as a current one.
+    match /priceCache/{entry} {
+      allow read, write: if false;
+    }
+
     // Everything not matched above is denied. Default-deny is the point.
     match /{document=**} {
       allow read, write: if false;

@@ -81,6 +81,11 @@ export interface BuildStampArgs {
   imageDataUrl: string;
   /** Live pricing, or null when the lookup was skipped or unavailable. */
   pricing: Stamp['pricing'] | null;
+  /**
+   * Why pricing is absent, when that is a decision rather than a market fact.
+   * Null when a lookup genuinely ran.
+   */
+  notPricedReason?: string | null;
   /** Disambiguates two detections that resolve to the same catalog number. */
   index: number;
   /** Stable timestamp for the whole batch. */
@@ -98,6 +103,7 @@ export function buildIdentifiedStamp({
   ident,
   imageDataUrl,
   pricing,
+  notPricedReason = null,
   index,
   now,
 }: BuildStampArgs): Partial<Stamp> {
@@ -157,6 +163,9 @@ export function buildIdentifiedStamp({
           stampworld: null,
         },
       } as Stamp['pricing']),
+    // Only meaningful when there is no live pricing; a real lookup that found
+    // nothing is a market fact and needs no excuse.
+    notPricedReason: pricing ? null : notPricedReason,
     priceHistory: [],
     tags: ident.topicThemes ?? [],
     notes: ident.identificationNotes ?? '',
@@ -239,6 +248,7 @@ export function toFullStamp(
       referenceImageUrl: partial.identification?.referenceImageUrl ?? null,
     },
     pricing: partial.pricing ?? null,
+    notPricedReason: partial.notPricedReason ?? null,
     priceHistory: partial.priceHistory ?? [],
     notes: partial.notes ?? '',
     tags: partial.tags ?? [],

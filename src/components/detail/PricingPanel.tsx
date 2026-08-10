@@ -11,6 +11,9 @@ const TIER_HEADING: Record<PriceBasis['tier'], string> = {
   active: 'Current Asking Price',
   last_sold: 'Last Known Sold',
   catalog: 'Catalog Value',
+  // Deliberately NOT "Current" anything: this price was observed on an earlier
+  // date and is being remembered, not fetched. The basis label carries how old.
+  cached: 'Last Recorded Price',
 };
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */

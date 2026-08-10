@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { Stamp } from '@/types/stamp';
+import { safeThumbnail } from '@/lib/storage/persist-guards';
 
 import type {
   CollectionStats,
@@ -510,7 +511,15 @@ export const useStampsStore = create<StampsState>()(
          * collectionStats are recomputed on rehydrate rather than stored.
          */
         partialize: (state) => ({
-          stamps: state.stamps.map((stamp) => ({ ...stamp, imageUrl: '' })),
+          // safeThumbnail is the backstop: the store owns the ~5MB constraint,
+          // so the store enforces it. An upstream bug once handed us a full
+          // 80-200KB crop as a "thumbnail" and it was persisted verbatim,
+          // exhausting the quota after a handful of stamps.
+          stamps: state.stamps.map((stamp) => ({
+            ...stamp,
+            imageUrl: '',
+            thumbnailUrl: safeThumbnail(stamp.thumbnailUrl),
+          })),
           viewMode: state.viewMode,
           sortConfig: state.sortConfig,
           sort: state.sort,

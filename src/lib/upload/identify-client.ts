@@ -8,6 +8,9 @@
 
 import { dataUrlMimeType } from './image-pipeline';
 import { getCacheDurationMs } from '@/lib/settings';
+import { pricingEligibility } from '@/lib/pricing/eligibility';
+
+export { pricingEligibility } from '@/lib/pricing/eligibility';
 
 /** The identification payload as returned by the route. */
 export interface RawIdentification {
@@ -68,18 +71,13 @@ export async function identifyStamp(
 /**
  * Whether an identification is confident enough to justify a pricing lookup.
  *
- * Searching the marketplace for "Unknown, no Scott number" still returns a
- * confident-looking price with cited listings — for a stamp the AI itself said
- * it could not read. Matches the identify prompt's own MEDIUM-confidence floor.
+ * Delegates to `pricingEligibility` so this screen and the Price Tracker cannot
+ * drift apart again — they previously applied different rules, and upload's was
+ * the stricter one, silently skipping stamps the Price Tracker would have
+ * priced happily. Prefer `pricingEligibility` directly when you need the reason.
  */
 export function isIdentified(ident: RawIdentification): boolean {
-  return (
-    typeof ident.aiConfidence === 'number' &&
-    ident.aiConfidence >= 0.5 &&
-    !!ident.country &&
-    ident.country !== 'Unknown' &&
-    ident.country !== 'Not a stamp'
-  );
+  return pricingEligibility(ident).eligible;
 }
 
 /** Look up live pricing. Returns null when unavailable — never a fabricated value. */
@@ -87,22 +85,49 @@ export async function lookupPricing(
   ident: RawIdentification,
   opts: { forceRefresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<{ pricing: unknown | null; unavailableReason: string | null }> {
-  const res = await fetch('/api/pricing/lookup', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      stampDescription: ident.description,
-      scottNumber: ident.scottNumber || undefined,
-      country: ident.country || undefined,
-      year: ident.yearOfIssue || undefined,
-      condition: ident.condition || undefined,
-      cacheDurationMs: getCacheDurationMs(),
-      ...(opts.forceRefresh ? { forceRefresh: true } : {}),
-    }),
-    signal: opts.signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/pricing/lookup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        stampDescription: ident.description,
+        scottNumber: ident.scottNumber || undefined,
+        country: ident.country || undefined,
+        year: ident.yearOfIssue || undefined,
+        condition: ident.condition || undefined,
+        cacheDurationMs: getCacheDurationMs(),
+        ...(opts.forceRefresh ? { forceRefresh: true } : {}),
+      }),
+      signal: opts.signal,
+    });
+  } catch (err) {
+    // Cancellation is the user's doing — let the caller's loop see it and stop.
+    if (opts.signal?.aborted) throw err;
+    // Anything else is a transport failure, most often a phone changing
+    // networks mid-batch. It must NOT propagate: the caller treats a throw here
+    // as "this stamp failed", which would discard a good identification over a
+    // dropped pricing request.
+    return {
+      pricing: null,
+      unavailableReason:
+        'Price lookup could not reach the network. The stamp is saved — retry from the Price Tracker.',
+    };
+  }
 
-  if (!res.ok) return { pricing: null, unavailableReason: null };
+  // A failed request is not evidence that nothing is for sale. Returning null
+  // for both fields here made a 500, a rate-limit and a genuinely unlisted
+  // stamp render identically, as a bare em dash.
+  if (!res.ok) {
+    return {
+      pricing: null,
+      unavailableReason:
+        res.status === 429
+          ? 'Price lookups are being rate limited. The stamp is saved — retry from the Price Tracker.'
+          : `Price lookup failed (${res.status}). The stamp is saved — retry from the Price Tracker.`,
+    };
+  }
+
   const json = await res.json();
   return {
     pricing: json?.pricing ?? null,
