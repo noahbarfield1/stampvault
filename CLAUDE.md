@@ -111,7 +111,42 @@ Optional and off until the owner signs in. The app is fully usable without it.
 
 ### One-time console setup
 
-Authentication has never been enabled on `perduestampvault-db`. Until it is,
-sign-in fails with `auth/configuration-not-found` and the Settings panel shows
-the exact steps. Firebase console → Build → Authentication → Get started →
-enable Google → set a support email → check Authorized domains.
+This section previously said authentication had never been enabled. That is no
+longer true, and the stale note cost real debugging time. Verified 2026-08-09
+against the Identity Toolkit admin API:
+
+- Google sign-in: `enabled: true`
+- Authorized domains: `localhost`, `perduestampvault-db.firebaseapp.com`,
+  `perduestampvault-db.web.app`, **`stampvault-inky.vercel.app`**
+
+Cloud sync is configured end to end; it only needs the user to sign in.
+
+Re-check with this rather than trusting the file:
+
+```bash
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: perduestampvault-db" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/perduestampvault-db/config"
+```
+
+## Durable price cache
+
+`priceCache/{country}_{scott}_{condition}` in Firestore. Every successful live
+lookup is remembered and becomes the fallback next time that stamp is priced —
+`verified-database.ts` is only 13 hand-authored stamps and cannot be grown by
+hand, since Scott catalogue values are copyrighted.
+
+Server-only, via `firebase-admin` and `FIREBASE_SERVICE_ACCOUNT_JSON` (set on
+Vercel production and in `.env.local`). `firestore.rules` denies clients both
+read and write on `priceCache/**`: writes because a browser that could write
+there could poison every collector's fallback price, reads because the pricing
+route is what applies the freshness check and relabels the entry as a dated
+observation rather than a live one.
+
+Only catalogued stamps are cached — without a Scott number the eBay query is
+fuzzy and would serve one stamp's price for another's — and only genuine live
+tiers are stored, so "we found nothing today" never hardens into a durable
+claim about the stamp.
+
+Verified in production 2026-08-09: a lookup wrote `united-states_245_used`, and
+a subsequent lookup returned `provider: price-cache`, `tier: cached`.
