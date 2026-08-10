@@ -164,9 +164,14 @@
 }
 
 .checkboxInput {
-  /* A 13px checkbox is unhittable with a thumb. */
-  width: 20px;
-  height: 20px;
+  /* A 13px checkbox is unhittable with a thumb. 24px is Lighthouse's
+     target-size floor; the label around it is already 44px tall. */
+  width: 24px;
+  height: 24px;
+  /* Without this the flex label COMPRESSES the box below its declared size —
+     it measured 19px at 360px, because the long label text won the space. A
+     declared width is not a guaranteed width inside a flex row. */
+  flex-shrink: 0;
   accent-color: #d4a574;
   cursor: pointer;
 }

@@ -97,5 +97,10 @@ export default defineConfig({
     timeout: 300_000,
     stdout: 'ignore',
     stderr: 'pipe',
+    // Exposes the upload-session store so a test can reach the review screen
+    // without spending real AI calls. NEXT_PUBLIC_* is inlined at build time,
+    // so this must be set for the BUILD, not just the server — and a normal
+    // `vercel --prod` build, which never sets it, drops the block entirely.
+    env: { ...process.env, NEXT_PUBLIC_E2E_HOOKS: '1' } as Record<string, string>,
   },
 });

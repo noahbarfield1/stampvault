@@ -264,3 +264,28 @@ export const useUploadSession = create<UploadSessionState>()(
     },
   ),
 );
+
+/* ── E2E seam ──────────────────────────────────────────────────────────────
+ * `identified` is deliberately not persisted (see partialize), which is right:
+ * an abandoned upload should not resurrect multi-MB crops. But it also means a
+ * browser test cannot reach the review screen without spending real AI calls on
+ * segmentation and identification.
+ *
+ * So the store is exposed under an explicit build flag, which only the
+ * Playwright webServer sets.
+ *
+ * Note what this does NOT do. An earlier version of this comment claimed the
+ * block is dead-code-eliminated when the flag is unset. It is not: Next only
+ * inlines a NEXT_PUBLIC_* var that is DEFINED at build time, so with it unset
+ * the comparison survives into the bundle and is evaluated at runtime against
+ * an undefined value. Verified against production 2026-08-09 — the guard ships
+ * as `"1"===...NEXT_PUBLIC_E2E_HOOKS&&(window.__uploadSessionStore=...)`, and
+ * `'__uploadSessionStore' in window` is false on the live site.
+ *
+ * So it is inert, not absent. The practical consequence: setting
+ * NEXT_PUBLIC_E2E_HOOKS=1 on a production deployment WOULD expose this store.
+ * Never set it outside the test harness.
+ * ──────────────────────────────────────────────────────────────────────────── */
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_E2E_HOOKS === '1') {
+  (window as unknown as Record<string, unknown>).__uploadSessionStore = useUploadSession;
+}
