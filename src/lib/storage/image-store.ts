@@ -6,13 +6,16 @@
  * store had no `partialize`, so it wrote its ENTIRE state — including both
  * `stamps` and `filteredStamps`, which are the same records. Every full-size
  * base64 crop was therefore stored TWICE. At roughly 110-270KB per crop that
- * is ~250-550KB per stamp, so the quota blew after only about a dozen stamps,
- * and zustand's persist middleware swallows QuotaExceededError — so saves
- * failed silently.
+ * is ~250-550KB per stamp, so the quota blew after only about a dozen stamps.
+ *
+ * (This comment used to continue "and zustand's persist middleware swallows
+ * QuotaExceededError — so saves failed silently." That is not true; see
+ * lib/storage/quota for the verification against zustand 5.0.14. The claim was
+ * copied into four files and cost real debugging time.)
  *
  * IndexedDB has no such practical cap (browsers grant hundreds of MB), it is
- * async so it never blocks the UI, and it fails loudly instead of silently.
- * localStorage now holds only metadata plus a ~20KB thumbnail per stamp.
+ * async so it never blocks the UI, and it reports failures rather than
+ * degrading. localStorage now holds only metadata plus a ~20KB thumbnail.
  *
  * Hand-rolled rather than pulling in idb: this is ~80 lines and the project has
  * no other need for the dependency.
@@ -45,8 +48,8 @@ function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequ
         const t = db.transaction(STORE, mode);
         const req = run(t.objectStore(STORE));
         req.onsuccess = () => resolve(req.result);
-        // Surface the real error — quota problems must not be swallowed the way
-        // the localStorage path swallowed them.
+        // Surface the real error. Callers that can tolerate a miss catch it
+        // themselves; this layer never decides on their behalf.
         req.onerror = () => reject(req.error ?? new Error('Image storage write failed'));
         t.onabort = () => reject(t.error ?? new Error('Image storage transaction aborted'));
       }),
@@ -74,6 +77,22 @@ export async function deleteStampImage(stampId: string): Promise<void> {
   } catch {
     /* best effort — an orphaned image is harmless */
   }
+}
+
+/**
+ * Drop every stored crop.
+ *
+ * "Clear All Data" in Settings used to call only `setStamps([])`, which empties
+ * localStorage and leaves every full-resolution crop in IndexedDB forever. On
+ * Chrome and Android the origin's storage bucket is shared, so that orphaned
+ * garbage genuinely reduces the headroom localStorage can claim — a user who
+ * had cleared and re-added several times was quietly worse off each round.
+ *
+ * Rejects rather than swallowing: the caller tells the user whether their data
+ * is actually gone, so it needs to know.
+ */
+export async function clearAllImages(): Promise<void> {
+  await tx('readwrite', (s) => s.clear());
 }
 
 /** Load many at once, for rehydrating a whole collection. */

@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import styles from './settings.module.css';
 import { useStampsStore } from '@/store/stamps';
 import { useUIStore } from '@/store/ui';
+import { useSyncStore } from '@/store/sync';
 import type { Stamp } from '@/types/stamp';
 import { usePageChrome } from '@/hooks/usePageChrome';
 import CloudSyncPanel from '@/components/settings/CloudSyncPanel';
@@ -362,10 +363,34 @@ export default function SettingsPage() {
   const handleClearData = useCallback(async () => {
     setStamps([]);
     setShowClearModal(false);
+
+    // Emptying the store only clears localStorage. Every full-resolution crop
+    // lives in IndexedDB and used to survive this, orphaned and unreachable —
+    // so a user who cleared and re-added kept accumulating dead images that ate
+    // the origin's shared storage bucket.
+    let imagesCleared = true;
+    try {
+      const { clearAllImages } = await import('@/lib/storage/image-store');
+      await clearAllImages();
+    } catch (err) {
+      imagesCleared = false;
+      console.error('[settings] could not clear stored images', err);
+    }
+
+    // "Permanently deleted" was not true when signed in: the cloud copy
+    // survives on purpose, because sync's merge never treats a local absence
+    // as a delete. Only removeStamp deletes remotely.
+    const signedIn = Boolean(useSyncStore.getState().user);
+
     addToast({
-      type: 'success',
-      title: 'Collection cleared',
-      message: 'All stamps have been permanently deleted.',
+      type: imagesCleared ? 'success' : 'warning',
+      title: imagesCleared ? 'Collection cleared' : 'Collection cleared, images left behind',
+      message: !imagesCleared
+        ? 'The stamps are gone from this device, but their stored images could not be removed.'
+        : signedIn
+          ? 'All stamps have been removed from this device. Your cloud copy is untouched — ' +
+            'sync will restore them unless you delete them individually.'
+          : 'All stamps have been permanently deleted.',
     });
   }, [setStamps, addToast]);
 

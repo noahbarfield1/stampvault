@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { createJSONStorage, devtools, persist } from 'zustand/middleware';
 import type { Stamp } from '@/types/stamp';
 import { safeThumbnail } from '@/lib/storage/persist-guards';
+import { createStampStorage } from '@/lib/storage/persisted-storage';
 
 import type {
   CollectionStats,
@@ -311,10 +312,49 @@ async function dropImage(stampId: string): Promise<void> {
   }
 }
 
+
+/* ── Keeping memory and disk in agreement ─────────────────────────────────
+ *  zustand's persist middleware runs the state update BEFORE it writes:
+ *
+ *      (...args) => { set(...args); return setItem(); }
+ *
+ *  (zustand 5.0.14, esm/middleware.mjs:370-376 — note there is no try/catch,
+ *  so contrary to a comment that used to appear in four files here, the error
+ *  is not swallowed.) When localStorage is full, `setItem` throws but the new
+ *  stamp is already in memory and already rendered. The user was told "Saved
+ *  3 of 5", saw 5 on screen, and had 3 after a reload.
+ *
+ *  So: snapshot, mutate, and put the collection back if the write refused.
+ *  The rollback write is strictly smaller than the one that failed, so it
+ *  succeeds. The caller still gets the throw and still reports the failure.
+ *
+ *  Note this does NOT undo `mirrorUp`. That is deliberate — a signed-in user
+ *  whose phone is full still gets the stamp into the cloud, and sync's merge
+ *  treats "missing on one side" as not-yet-synced rather than as a delete, so
+ *  the stamp comes back rather than being lost.
+ * ─────────────────────────────────────────────────────────────────────── */
+function withPersistRollback(
+  set: (partial: Partial<StampsState>) => void,
+  get: () => StampsState,
+  mutate: () => void,
+): void {
+  const { stamps, filteredStamps } = get();
+  try {
+    mutate();
+  } catch (err) {
+    try {
+      set({ stamps, filteredStamps });
+    } catch {
+      /* the restore can refuse too; the original throw is what callers act on */
+    }
+    throw err;
+  }
+}
+
 export const useStampsStore = create<StampsState>()(
   devtools(
     persist(
-      (set) => ({
+      (set, get) => ({
         /* Data */
         // A new collection starts EMPTY. It used to start with three sample
         // stamps, so anyone opening the app for the first time saw a
@@ -421,11 +461,19 @@ export const useStampsStore = create<StampsState>()(
 
   /* Actions */
   setStamps: (stamps) =>
-    set((state) => ({
-      stamps,
-      filteredStamps: filterAndSortStamps(stamps, state.filters, state.sortConfig),
-    })),
+    withPersistRollback(set, get, () => {
+      set((state) => ({
+        stamps,
+        filteredStamps: filterAndSortStamps(stamps, state.filters, state.sortConfig),
+      }));
+      // This is the cloud-sync merge target. Merged-in stamps arrive with no
+      // local full crop (collection-sync sets imageUrl to the thumbnail), so
+      // pull whatever IndexedDB does have rather than leaving every detail
+      // view to refetch from Firestore.
+      void hydrateImages();
+    }),
   addStamp: (stamp) =>
+    withPersistRollback(set, get, () =>
     set((state) => {
       // Upsert by id: importing a previously-exported collection (or any
       // other re-add of an existing stamp) would otherwise append a second
@@ -450,8 +498,9 @@ export const useStampsStore = create<StampsState>()(
           state.sortConfig
         ),
       };
-    }),
+    })),
   updateStamp: (id, updates) =>
+    withPersistRollback(set, get, () =>
     set((state) => {
       // Always advance updatedAt: it is what sync uses to decide which copy
       // wins, so an edit that does not move it can be silently reverted by a
@@ -461,7 +510,13 @@ export const useStampsStore = create<StampsState>()(
         s.id === id ? { ...s, ...stamped } : s
       );
       const changed = newStamps.find((s) => s.id === id);
-      if (changed) void mirrorUp(changed);
+      if (changed) {
+        void mirrorUp(changed);
+        // No call site passes imageUrl today, but if one ever does the crop
+        // belongs in IndexedDB — addStamp has always done this and updateStamp
+        // never did, so an updated image would have been dropped on reload.
+        void storeImage(changed);
+      }
       return {
         stamps: newStamps,
         filteredStamps: filterAndSortStamps(
@@ -470,8 +525,9 @@ export const useStampsStore = create<StampsState>()(
           state.sortConfig
         ),
       };
-    }),
+    })),
   removeStamp: (id) =>
+    withPersistRollback(set, get, () =>
     set((state) => {
       const newStamps = state.stamps.filter((s) => s.id !== id);
       // A delete is explicit, so propagate it. Sync's merge deliberately does
@@ -487,7 +543,7 @@ export const useStampsStore = create<StampsState>()(
           state.sortConfig
         ),
       };
-    }),
+    })),
   setSelectedStamp: (id) => set({ selectedStampId: id }),
   setCollectionStats: (stats) => set({ collectionStats: stats }),
   setIsLoading: (loading) => set({ isLoading: loading }),
@@ -497,14 +553,27 @@ export const useStampsStore = create<StampsState>()(
         name: 'stampvault-stamps',
         version: 1,
 
+        // Reports quota refusals instead of letting them look like any other
+        // error, and skips writes whose serialized value has not changed.
+        // See lib/storage/persisted-storage.
+        storage: createJSONStorage(createStampStorage),
+
         /*
          * Previously absent, so the ENTIRE state was written to localStorage —
          * including `filteredStamps`, which is the same records as `stamps`.
          * Every full-resolution base64 crop was therefore stored TWICE. At
          * ~110-270KB per crop that is ~250-550KB per stamp against Safari's
-         * ~5MB cap, so the quota blew after roughly a dozen stamps — and
-         * zustand's persist middleware swallows QuotaExceededError, so saves
-         * failed silently.
+         * ~5MB cap, so the quota blew after roughly a dozen stamps.
+         *
+         * An earlier version of this comment added "and zustand's persist
+         * middleware swallows QuotaExceededError, so saves failed silently."
+         * That is false, and it was copied into three other files. zustand
+         * 5.0.14 `esm/middleware.mjs:370-376` calls `set(...args)` then
+         * `setItem()` with no try/catch, and `createJSONStorage` wraps only
+         * `getStorage()`. The error propagates. The actual defect is that
+         * `set(...)` has ALREADY run when `setItem()` throws, so the stamp is
+         * in memory and rendered but absent from disk — see the snapshot/
+         * restore in the actions above.
          *
          * Now: metadata plus a ~20KB thumbnail only. Full crops live in
          * IndexedDB (see lib/storage/image-store), and filteredStamps /
@@ -545,3 +614,20 @@ export const useStampsStore = create<StampsState>()(
     { name: 'StampVault:stamps' }
   )
 );
+
+/* ── E2E seam ──────────────────────────────────────────────────────────────
+ * Exposes the collection store so a browser test can compare what is in
+ * memory against what is on disk. That comparison is the only way to observe
+ * the bug this store was changed to fix — a stamp that has been `set` but
+ * whose write was refused renders normally and only disappears on reload, so
+ * nothing visible on the page distinguishes it.
+ *
+ * Same build flag and the same caveat as the upload-session seam in
+ * store/uploadSession.ts:268-291: Next only inlines a NEXT_PUBLIC_* var that
+ * is DEFINED at build time, so with the flag unset this guard survives into
+ * the bundle and evaluates against undefined at runtime. It is inert, not
+ * absent — never set NEXT_PUBLIC_E2E_HOOKS outside the test harness.
+ * ──────────────────────────────────────────────────────────────────────── */
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_E2E_HOOKS === '1') {
+  (window as unknown as Record<string, unknown>).__stampsStore = useStampsStore;
+}

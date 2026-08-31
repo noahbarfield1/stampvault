@@ -322,6 +322,114 @@ check('the tier label states which condition was compared', () => {
   }
 });
 
+/* ─── Range and confidence ─────────────────────────────────────────────
+ *  Added 2026-08-23 with the statistics rewrite. The complaint these answer
+ *  is "the prices are not accurate and the range is very large".
+ * ────────────────────────────────────────────────────────────────────── */
+
+const prices = (xs) => xs.map((price) => activeListing({ price }));
+
+check('the headline value never falls outside the range it is shown with', () => {
+  // The one invariant the UI depends on. Asserted across every tier and
+  // every sample size, including the degenerate ones.
+  const cases = [
+    { label: 'tight active', args: { sold: [], active: prices([1.9, 2.0, 2.1, 2.2, 2.3]) } },
+    { label: 'dispersed active', args: { sold: [], active: prices([0.99, 2, 5, 500, 79950]) } },
+    { label: 'n=1 sold', args: { sold: [soldListing({ price: 12 })], active: [] } },
+    {
+      label: 'n=4 sold',
+      args: { sold: [12, 13, 14, 900].map((price) => soldListing({ price })), active: [] },
+    },
+    { label: 'catalog only', args: { sold: [], active: [], catalog: { value: 40 } } },
+    { label: 'nothing at all', args: { sold: [], active: [] } },
+  ];
+
+  for (const { label, args } of cases) {
+    const r = aggregateLivePricing({ ...args, referenceTime: REFERENCE_TIME });
+    const { min, max } = r.priceRange;
+    if (max < min) throw new Error(`${label}: range is inverted (${min}..${max})`);
+    // The catalog/none tiers carry no comparables, so their range is 0-0 and
+    // the value legitimately sits outside it.
+    if (r.priceBasis.sampleSize === 0) continue;
+    if (r.estimatedValue < min || r.estimatedValue > max) {
+      throw new Error(
+        `${label}: value ${r.estimatedValue} outside range ${min}..${max}`,
+      );
+    }
+  }
+});
+
+check('the range is labelled with what it actually spans', () => {
+  const many = aggregateLivePricing({
+    sold: [], active: prices([1, 2, 3, 4, 5]), referenceTime: REFERENCE_TIME,
+  });
+  assertEqual(many.priceBasis.priceRangeBasis, 'iqr', 'basis with 5 comparables');
+
+  // Below 4 there are no meaningful quartiles. Saying 'iqr' anyway would be
+  // a claim about a middle 50% that was never computed.
+  const few = aggregateLivePricing({
+    sold: [soldListing({ price: 10 }), soldListing({ price: 40 })],
+    active: [],
+    referenceTime: REFERENCE_TIME,
+  });
+  assertEqual(few.priceBasis.priceRangeBasis, 'full', 'basis with 2 comparables');
+
+  const none = aggregateLivePricing({
+    sold: [], active: [], catalog: { value: 5 }, referenceTime: REFERENCE_TIME,
+  });
+  assertEqual(none.priceBasis.priceRangeBasis, 'none', 'basis with no comparables');
+});
+
+check('a wildly-priced comparable no longer widens the range at n=4', () => {
+  // THE REGRESSION, at the aggregator level. Four singles around $3 plus a
+  // block of six at $79,950. The median is resistant so the VALUE was always
+  // roughly right — but the old range was min..max of the survivors, and the
+  // old outlier filter could not reject a maximum at n=4, so the app showed
+  // "$3.25, range $2.50 - $79,950". That is the reported complaint.
+  const r = aggregateLivePricing({
+    sold: [], active: prices([2.5, 3.0, 3.5, 79950]), referenceTime: REFERENCE_TIME,
+  });
+  if (r.priceRange.max > 100) {
+    throw new Error(`the outlier still drives the range: max ${r.priceRange.max}`);
+  }
+});
+
+check('confidence responds to whether the comparables agree', () => {
+  // Same tier, same sample size — only the spread differs. Both reported a
+  // flat 0.6 before this.
+  const tight = aggregateLivePricing({
+    sold: [], active: prices([1.9, 1.95, 2.0, 2.05, 2.1]), referenceTime: REFERENCE_TIME,
+  });
+  const loose = aggregateLivePricing({
+    sold: [], active: prices([0.99, 2, 20, 500, 79950]), referenceTime: REFERENCE_TIME,
+  });
+
+  assertEqual(tight.priceBasis.tier, 'active', 'tight tier');
+  assertEqual(loose.priceBasis.tier, 'active', 'loose tier');
+  if (!(tight.confidence > loose.confidence)) {
+    throw new Error(
+      `agreement did not raise confidence: tight ${tight.confidence} vs loose ${loose.confidence}`,
+    );
+  }
+  // Still bounded by the tier weight, whatever the spread.
+  if (tight.confidence > 0.6) {
+    throw new Error(`active confidence exceeded its tier weight: ${tight.confidence}`);
+  }
+  if (loose.confidence < 0) throw new Error(`negative confidence: ${loose.confidence}`);
+});
+
+check('more comparables raise confidence at equal agreement', () => {
+  const few = aggregateLivePricing({
+    sold: [], active: prices([2, 2, 2]), referenceTime: REFERENCE_TIME,
+  });
+  const many = aggregateLivePricing({
+    sold: [], active: prices([2, 2, 2, 2, 2]), referenceTime: REFERENCE_TIME,
+  });
+  if (!(many.confidence > few.confidence)) {
+    throw new Error(`sample size ignored: ${few.confidence} -> ${many.confidence}`);
+  }
+});
+
 /* ─── Summary ──────────────────────────────────────────────────────────── */
 
 console.log(`\n${passed} passed, ${failed} failed`);

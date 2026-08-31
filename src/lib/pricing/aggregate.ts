@@ -11,6 +11,7 @@
  * ──────────────────────────────────────────────────────────────────── */
 
 import type { MarketListing } from './providers/types';
+import { median, removeOutliersIQR, robustCV, trimmedRange } from './statistics';
 import type {
   PriceData,
   PriceSource,
@@ -63,35 +64,13 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Median of a set of numbers. Returns 0 for an empty input. */
-export function median(nums: number[]): number {
-  if (nums.length === 0) return 0;
-
-  const sorted = [...nums].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
-}
-
-/**
- * Filter out statistical outliers using the IQR method.
- * Returns the input unchanged when there are fewer than 4 points
- * (not enough data to establish a meaningful quartile spread).
+/*
+ * median / removeOutliersIQR moved to ./statistics, which fixed a defect that
+ * had made the outlier filter a no-op at n=4 — see that module's header. They
+ * are re-exported here because they are part of this module's public surface
+ * and are imported by name elsewhere, including aggregate.check.mjs.
  */
-export function removeOutliersIQR(nums: number[]): number[] {
-  if (nums.length < 4) return nums;
-
-  const sorted = [...nums].sort((a, b) => a - b);
-  const q1 = sorted[Math.floor(sorted.length * 0.25)];
-  const q3 = sorted[Math.floor(sorted.length * 0.75)];
-  const iqr = q3 - q1;
-  const lowerBound = q1 - 1.5 * iqr;
-  const upperBound = q3 + 1.5 * iqr;
-
-  return sorted.filter((n) => n >= lowerBound && n <= upperBound);
-}
+export { median, removeOutliersIQR } from './statistics';
 
 /* ─── Normalization ──────────────────────────────────────────────────── */
 
@@ -332,10 +311,19 @@ export function aggregateLivePricing(params: {
     tierPrices = [];
   }
 
-  const priceRange =
-    tierPrices.length > 0
-      ? { min: round2(Math.min(...tierPrices)), max: round2(Math.max(...tierPrices)) }
-      : { min: 0, max: 0 };
+  /*
+   * The middle 50% of the comparables, not their full span.
+   *
+   * This used to be min/max of everything that survived outlier filtering.
+   * Surviving the Tukey fences is a weak constraint — on eBay asking prices
+   * the survivors routinely still span two orders of magnitude — so the
+   * "range" the app showed was technically true and practically useless.
+   *
+   * The full spread is not lost: sourceBreakdown.ebay keeps min/max.
+   */
+  const trimmed = trimmedRange(tierPrices);
+  const priceRange = { min: round2(trimmed.min), max: round2(trimmed.max) };
+  priceBasis.priceRangeBasis = trimmed.basis;
 
   const hipstamp = computeBreakdown(sources, 'hipstamp');
   const ebay = computeBreakdown(sources, 'ebay');
@@ -349,21 +337,49 @@ export function aggregateLivePricing(params: {
     stampworld: stampworld ? { avg: stampworld.avg, count: stampworld.count } : null,
   };
 
-  let confidence = 0;
-  switch (priceBasis.tier) {
-    case 'live_sold':
-      confidence = round2(0.9 * Math.min(priceBasis.sampleSize / 5, 1));
-      break;
-    case 'active':
-      confidence = 0.6;
-      break;
-    case 'last_sold':
-      confidence = 0.5;
-      break;
-    case 'catalog':
-      confidence = priceBasis.value > 0 ? 0.4 : 0;
-      break;
-  }
+  /*
+   * Confidence = tier × sample size × how much the comparables agree.
+   *
+   * The dispersion term is the new one, and it is the one that matters. The
+   * `active` tier used to return a flat 0.6 no matter what: twelve listings
+   * clustered between $1.90 and $2.10 and twelve spanning $0.99 to $79,950
+   * were reported as equally trustworthy. Whether the market agrees with
+   * itself is most of what "confidence" should mean here.
+   *
+   * Bounded and monotonic by construction: each factor is in [0,1], so the
+   * product can never exceed its tier weight, and tightening a sample or
+   * adding a comparable can only raise it.
+   */
+  const tierWeight =
+    priceBasis.tier === 'live_sold'
+      ? 0.9
+      : priceBasis.tier === 'active'
+        ? 0.6
+        : priceBasis.tier === 'last_sold'
+          ? 0.5
+          : priceBasis.value > 0
+            ? 0.4
+            : 0;
+
+  // A single completed sale is real evidence; a single asking price is not.
+  // Both still scale toward full weight at 5 comparables.
+  const sampleFactor =
+    priceBasis.sampleSize > 0 ? Math.min(priceBasis.sampleSize / 5, 1) : 1;
+
+  // robustCV is (q3 − q1) / (2 · median): 0 when every comparable agrees, 1
+  // when the interquartile spread is twice the median. Needs 4+ points for
+  // the quartiles to mean anything; below that there is no measured
+  // disagreement to penalise, so the factor stays 1 and sampleFactor alone
+  // carries the uncertainty.
+  const dispersionFactor =
+    tierPrices.length >= 4 ? 1 - Math.min(robustCV(tierPrices), 1) : 1;
+
+  // The catalog and last_sold tiers are single-point claims — there is no
+  // sample and no spread to measure, so they keep their flat weight.
+  const confidence =
+    priceBasis.tier === 'live_sold' || priceBasis.tier === 'active'
+      ? round2(tierWeight * sampleFactor * dispersionFactor)
+      : tierWeight;
 
   const hipstampPrices = sources
     .filter((s) => s.platform === 'hipstamp')

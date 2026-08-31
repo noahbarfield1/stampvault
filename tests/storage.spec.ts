@@ -5,8 +5,13 @@ import { test, expect } from '@playwright/test';
  *
  * The collection store persisted its ENTIRE state to localStorage, including
  * `filteredStamps`, which duplicates every stamp AND its full base64 crop. That
- * blew Safari's ~5MB quota after about a dozen stamps, and zustand swallows
- * QuotaExceededError, so saves failed with no explanation.
+ * blew Safari's ~5MB quota after about a dozen stamps.
+ *
+ * The rest of this note used to read "and zustand swallows QuotaExceededError,
+ * so saves failed with no explanation." It does not — see lib/storage/quota for
+ * the verification. What actually happened is that the state update lands
+ * before the write is attempted, so a failed save still showed the stamp on
+ * screen and lost it on reload.
  * ────────────────────────────────────────────────────────────────────────────── */
 
 /** Load the sample collection through the app's own UI. */

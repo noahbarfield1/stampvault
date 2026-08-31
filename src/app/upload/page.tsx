@@ -26,6 +26,7 @@ import { segmentImage, describeSegmentFailure, type SegmentOutcome } from '@/lib
 import { identifyStamp, pricingEligibility, lookupPricing } from '@/lib/upload/identify-client';
 import { buildIdentifiedStamp, buildFailedStamp, toFullStamp } from '@/lib/upload/to-stamp';
 import { requestPersistentStorage } from '@/lib/storage/image-store';
+import { isQuotaError } from '@/lib/storage/quota';
 import { usePageChrome } from '@/hooks/usePageChrome';
 import styles from './upload.module.css';
 
@@ -348,14 +349,18 @@ export default function UploadPage() {
     // price" turned out to be. One stamp failing must not cost the others.
     const failures: string[] = [];
     let saved = 0;
+    // Which kind of failure this was. The message used to assert "out of
+    // storage space" for ANY throw, so a stamp whose image would not decode
+    // told the user their phone was full. Now the two are told apart —
+    // isQuotaError is the check that never existed.
+    let sawQuotaFailure = false;
 
     for (const partial of identified) {
       try {
         // A real thumbnail. Previously the full multi-MB crop data URL was
         // stored in BOTH imageUrl and thumbnailUrl, which blew Safari's ~5MB
-        // localStorage quota after two or three photos — and zustand's persist
-        // middleware swallowed the QuotaExceededError, so the app navigated
-        // away and the stamps were simply gone on reload.
+        // localStorage quota after two or three photos, and the app navigated
+        // away leaving the stamps gone on reload.
         //
         // makeThumbnail returns null when the browser cannot allocate a canvas.
         // Fall back to the placeholder, never to the full crop: persisting that
@@ -369,6 +374,7 @@ export default function UploadPage() {
           ? `Scott ${partial.identification.scottNumber}`
           : (partial.identification?.country ?? 'a stamp');
         failures.push(label);
+        if (isQuotaError(err)) sawQuotaFailure = true;
         console.error('[upload] save failed for', label, err);
       }
     }
@@ -393,10 +399,15 @@ export default function UploadPage() {
         saved > 0
           ? `Saved ${saved} of ${identified.length} stamps`
           : 'Could not save your stamps',
-      message:
-        `${failures.join(', ')} could not be saved — this device is out of storage space. ` +
-        'Freeing space in the collection, or turning on cloud sync in Settings, will let the rest save. ' +
-        'Your stamps are still on this screen — stay here rather than navigating away.',
+      message: sawQuotaFailure
+        ? `${failures.join(', ')} could not be saved — this device is out of storage space. ` +
+          'Turning on cloud sync in Settings, or freeing space in the collection, will let the rest save. ' +
+          'Your stamps are still on this screen — stay here rather than navigating away.'
+        : // Not a storage problem. Say what actually happened rather than
+          // sending the user off to delete stamps that were never the cause.
+          `${failures.join(', ')} could not be saved — the image could not be prepared. ` +
+          'Your stamps are still on this screen — stay here rather than navigating away, ' +
+          'and try saving again.',
       duration: 15000,
     });
   }, [identified, addStamp, session, router, addToast]);

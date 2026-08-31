@@ -194,6 +194,83 @@ test('a save that runs out of space keeps what fits and stays on the page', asyn
   expect(errors).toEqual([]);
 });
 
+test('what is on screen after a failed save is what is on disk', async ({ page }) => {
+  /* The bug this covers is invisible on the page.
+   *
+   * zustand's persist runs `set(...)` and THEN writes:
+   *
+   *     (...args) => { set(...args); return setItem(); }
+   *
+   * so when localStorage refuses, the stamp is already in the store and
+   * already rendered. The user was told "Saved 3 of 5", counted 5 in their
+   * collection, and had 3 after a reload — with nothing in between to
+   * suggest anything had gone wrong.
+   *
+   * The store now restores the previous collection when a write is refused,
+   * so memory and disk agree at every point. Comparing the two is the only
+   * way to see it; hence the E2E seam. */
+  await driveToReviewScreen(page, STAMP_COUNT);
+  const save = page.getByRole('button', { name: /save all to collection/i });
+  await expect(save).toBeVisible({ timeout: 10_000 });
+
+  await page.waitForFunction(() => '__stampsStore' in window, null, { timeout: 10_000 });
+
+  // fillStorage writes 64KB chunks and stops at the first refusal, so it can
+  // leave up to 64KB of slack — which on desktop Chrome held all five of
+  // these records, and the run went green with nothing ever refused. Pack the
+  // remainder with progressively smaller chunks so the slack is bytes, not
+  // kilobytes, and every subsequent write is genuinely refused.
+  await fillStorage(page, 0);
+  await page.evaluate(() => {
+    let n = 100_000; // well clear of fillStorage's own __ballast_ keys
+    for (const size of [4096, 256, 16]) {
+      const chunk = 'x'.repeat(size);
+      for (let i = 0; i < 5_000; i++) {
+        try {
+          localStorage.setItem(`__ballast_${n}`, chunk);
+          n++;
+        } catch {
+          break;
+        }
+      }
+    }
+  });
+
+  await save.click();
+  await page.waitForTimeout(3_000);
+
+  const { inMemory, onDisk } = await page.evaluate(() => {
+    const store = (
+      window as unknown as { __stampsStore: { getState: () => { stamps: unknown[] } } }
+    ).__stampsStore;
+    const raw = localStorage.getItem('stampvault-stamps');
+    return {
+      inMemory: store.getState().stamps.length,
+      onDisk: raw ? (JSON.parse(raw).state?.stamps?.length ?? 0) : 0,
+    };
+  });
+
+  // Non-vacuity guard. If everything fit, no write was refused and the
+  // comparison below proves nothing — fail loudly rather than report green,
+  // the same discipline as 'localStorage really can be exhausted' above.
+  expect(onDisk).toBeLessThan(STAMP_COUNT);
+
+  // The assertion. Before the rollback these diverged by exactly the number
+  // of stamps whose write was refused.
+  expect(inMemory).toBe(onDisk);
+
+  // And the survivors must really survive a reload — otherwise `inMemory`
+  // could match simply because everything was thrown away.
+  await page.reload();
+  await page.waitForFunction(() => '__stampsStore' in window, null, { timeout: 10_000 });
+  const afterReload = await page.evaluate(
+    () =>
+      (window as unknown as { __stampsStore: { getState: () => { stamps: unknown[] } } })
+        .__stampsStore.getState().stamps.length,
+  );
+  expect(afterReload).toBe(onDisk);
+});
+
 test('no persisted stamp carries a full-resolution crop, even under pressure', async ({ page }) => {
   await driveToReviewScreen(page, STAMP_COUNT);
   const save = page.getByRole('button', { name: /save all to collection/i });

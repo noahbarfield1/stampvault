@@ -79,6 +79,21 @@ export interface PriceBasis {
   asOf: ISODateString | null;
   /** How many listings backed the headline value. */
   sampleSize: number;
+  /**
+   * What `PriceData.priceRange` actually spans.
+   *
+   * `iqr`  — the middle 50% of the comparables. Half of them fell outside it,
+   *          so it is a typical range, not a guaranteed one.
+   * `full` — min to max. Used below 4 comparables, where quartiles are
+   *          meaningless.
+   * `none` — no comparables; the range is 0–0 and should not be shown.
+   *
+   * This exists so the UI can say which it is. The range used to be min/max
+   * of everything that survived outlier filtering, which on asking prices
+   * still spanned two orders of magnitude and read as a claim about the whole
+   * market.
+   */
+  priceRangeBasis?: 'iqr' | 'full' | 'none';
   proof: {
     platform: string;
     url: string | null;
